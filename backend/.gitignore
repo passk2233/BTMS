@@ -1,0 +1,9 @@
+# Local configuration
+.env
+
+# Build and test output
+bin/
+coverage.out
+
+# sqlc output is generated from migrations and db/queries.
+db/sqlc/*.go

@@ -1,0 +1,17 @@
+{
+  "name": "btms",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Bachelor's Thesis Examination & Financial Management System",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build && go -C backend build ./...",
+    "lint": "npm --prefix frontend run lint",
+    "test": "npm --prefix frontend run test && go -C backend test ./...",
+    "generate:types": "powershell -ExecutionPolicy Bypass -File ./scripts/generate-types.ps1",
+    "check": "npm run lint && npm run test"
+  }
+}
