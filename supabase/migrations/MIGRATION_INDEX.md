@@ -1,23 +1,22 @@
 # BTMS migration index
 
-The only executable migration currently committed is
-`20260928000000_bootstrap_identity_and_storage.sql`. It establishes the
-cross-cutting identity, audit, and private-storage foundation without guessing
-the domain ERD.
+Applied migrations and planned future migrations for the BTMS database.
 
-Do **not** add blank `.sql` placeholders for the entries below. Supabase records
+Do **not** add blank `.sql` placeholders for planned entries. Supabase records
 every SQL migration as applied, so a blank file becomes permanent history and
 cannot later be filled in safely. Create a new timestamped migration only when
 its schema and RLS design are reviewed.
 
-| Planned migration | Scope | Required decisions before creating it |
+| Migration | Scope | Status |
 | --- | --- | --- |
-| `<timestamp>_thesis_core.sql` | `students`, `teachers`, `theses`, members, advisors, thesis files, revisions | Group ownership, advisor assignment rules, thesis visibility, file-object association |
-| `<timestamp>_progress.sql` | stages and thesis progress / development tracking | State-machine transitions, progress calculation authority, Realtime publication and read policies |
-| `<timestamp>_examinations.sql` | exam types, exams, rooms, committees, criteria, scores, results, comments | Proposal/final distinctions, committee assignment, score calculation and result finalization |
-| `<timestamp>_finance.sql` | fee/rate schedules, payments, receipts, committee payments, disbursements, transactions | Currency and rounding rule, rate snapshots, transaction boundaries, finance-only access |
-| `<timestamp>_printing.sql` | rates, orders, items, deliveries | Cost calculation authority, evidence links, printing-staff access |
-| `<timestamp>_notifications.sql` | notifications and Realtime publication settings | Recipient model, retention, direct-read policy |
+| `20260928000000_bootstrap_identity_and_storage.sql` | `profiles`, `roles`, `user_roles`, `audit_logs`, storage buckets, RLS | ✅ Applied |
+| `20261001000000_thesis_core.sql` | `students`, `teachers`, `theses`, `thesis_members`, `thesis_advisors`, `thesis_files`, `thesis_revisions`, RLS | ✅ Applied |
+| `20261001100000_examinations.sql` | `exam_types`, `exams`, `exam_rooms`, `exam_committees`, `evaluation_criteria`, `evaluation_scores`, `exam_comments`, RLS | ✅ Applied |
+| `20261006000000_exam_rounds_and_categories.sql` | `thesis_categories`, `teacher_expertise`, `exam_rounds`, `exam_round_rooms`, `exams` (round_id, attempt_no, decided_by, PASS/FAIL), RLS | ⚪ Pending Apply |
+| `20261006010000_exam_finance.sql` | `fee_types`, `fee_rates`, `exam_fee_payments`, `committee_rates`, `round_snack_budgets`, `staff_wage_periods`, `staff_wage_assignments`, `payouts`, RLS | ⚪ Pending Apply |
+| `<timestamp>_progress.sql` | stages and thesis progress / development tracking | ⚪ Planned |
+| `<timestamp>_printing.sql` | rates, orders, items, deliveries | ⚪ Planned |
+| `<timestamp>_notifications.sql` | notifications and Realtime publication settings | ⚪ Planned |
 
 For each new direct-client table, include in the same migration:
 

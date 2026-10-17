@@ -46,6 +46,38 @@ func ServiceUnavailable() *APIError {
 	}
 }
 
+func Unauthorized(msg string) *APIError {
+	return &APIError{
+		Status:  http.StatusUnauthorized,
+		Code:    "unauthorized",
+		Message: msg,
+	}
+}
+
+func Forbidden(msg string) *APIError {
+	return &APIError{
+		Status:  http.StatusForbidden,
+		Code:    "forbidden",
+		Message: msg,
+	}
+}
+
+func BadRequest(msg string) *APIError {
+	return &APIError{
+		Status:  http.StatusBadRequest,
+		Code:    "bad_request",
+		Message: msg,
+	}
+}
+
+func NotFound(msg string) *APIError {
+	return &APIError{
+		Status:  http.StatusNotFound,
+		Code:    "not_found",
+		Message: msg,
+	}
+}
+
 func Internal(err error) *APIError {
 	return &APIError{
 		Status:  http.StatusInternalServerError,

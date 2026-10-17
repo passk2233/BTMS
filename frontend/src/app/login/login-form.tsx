@@ -1,12 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -28,7 +29,9 @@ export function LoginForm() {
         return;
       }
 
-      router.replace("/dashboard");
+      // Redirect to the page the user originally requested, or /dashboard.
+      const next = searchParams.get("next") ?? "/dashboard";
+      router.replace(next);
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to sign in. Please try again.");

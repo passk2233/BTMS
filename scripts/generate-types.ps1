@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $false)]
     [string]$ProjectRef,
 
     [ValidateSet("public")]
@@ -15,19 +15,33 @@ $frontendTypes = Join-Path $repoRoot "frontend\src\types\database.types.ts"
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $frontendTypes) | Out-Null
 
 Write-Host "Generating TypeScript types from Supabase schema '$Schema'..."
-$generatedTypes = npx supabase gen types typescript --project-id $ProjectRef --schema $Schema
+if ($ProjectRef) {
+    $generatedTypes = npx supabase gen types typescript --project-id $ProjectRef --schema $Schema
+} else {
+    $generatedTypes = npx supabase gen types typescript --linked --schema $Schema
+}
+
 if ($LASTEXITCODE -ne 0) {
     throw "Supabase type generation failed with exit code $LASTEXITCODE."
 }
 
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 [System.IO.File]::WriteAllText($frontendTypes, ($generatedTypes -join [Environment]::NewLine), $utf8NoBom)
+Write-Host "Wrote generated types to $frontendTypes"
 
 Write-Host "Generating Go query code with sqlc..."
 Push-Location (Join-Path $repoRoot "backend")
 try {
-    sqlc generate
+    $sqlcCmd = Get-Command "sqlc" -ErrorAction SilentlyContinue
+    if ($sqlcCmd) {
+        & sqlc generate
+    } elseif (Test-Path "$env:USERPROFILE\go\bin\sqlc.exe") {
+        & "$env:USERPROFILE\go\bin\sqlc.exe" generate
+    } else {
+        go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.27.0 generate
+    }
 }
 finally {
     Pop-Location
 }
+Write-Host "Type generation and sqlc generation complete."

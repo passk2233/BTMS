@@ -12,9 +12,11 @@ import (
 
 	"github.com/btms/backend/config"
 	"github.com/btms/backend/db"
+	"github.com/btms/backend/db/sqlc"
 	"github.com/btms/backend/handler"
 	"github.com/btms/backend/middleware"
 	"github.com/btms/backend/routes"
+	"github.com/btms/backend/service"
 	"github.com/btms/backend/utils"
 	"github.com/gin-gonic/gin"
 )
@@ -50,6 +52,20 @@ func run() error {
 	}
 	defer pool.Close()
 
+	// --- Service layer ---
+	queries := sqlc.New(pool)
+	userSvc := service.NewUserService(queries)
+	thesisSvc := service.NewThesisService(queries)
+	examSvc := service.NewExamService(queries)
+	academicSvc := service.NewAcademicService(queries)
+
+	// --- JWKS provider for JWT verification ---
+	jwksProvider, err := middleware.NewJWKSProvider(cfg.Auth.JWKSURL, cfg.Auth.JWKSCacheTTL, logger)
+	if err != nil {
+		return fmt.Errorf("initialise JWKS provider: %w", err)
+	}
+
+	// --- HTTP router ---
 	router := gin.New()
 	router.Use(
 		middleware.RequestID(),
@@ -58,7 +74,17 @@ func run() error {
 		middleware.CORS(cfg.CORSAllowedOrigins),
 	)
 
-	routes.Register(router, handler.NewHealthHandler(pool, cfg.HealthCheckTimeout))
+	routes.Register(router, &routes.Deps{
+		Health:       handler.NewHealthHandler(pool, cfg.HealthCheckTimeout),
+		User:         handler.NewUserHandler(userSvc),
+		Thesis:       handler.NewThesisHandler(thesisSvc),
+		Exam:         handler.NewExamHandler(examSvc),
+		Academic:     handler.NewAcademicHandler(academicSvc),
+		Queries:      queries,
+		JWKSProvider: jwksProvider,
+		Issuer:       cfg.Auth.Issuer,
+		Logger:       logger,
+	})
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,

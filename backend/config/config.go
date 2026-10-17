@@ -9,9 +9,7 @@ import (
 	"time"
 )
 
-// Config is deliberately limited to values the API foundation currently uses.
-// Authentication configuration will be added after the Supabase signing-key mode
-// (JWKS or legacy HS256) has been chosen.
+// Config holds the complete application configuration.
 type Config struct {
 	Environment        string
 	Port               string
@@ -21,6 +19,7 @@ type Config struct {
 	ReadHeaderTimeout  time.Duration
 	HealthCheckTimeout time.Duration
 	Database           DatabaseConfig
+	Auth               AuthConfig
 }
 
 type DatabaseConfig struct {
@@ -29,6 +28,13 @@ type DatabaseConfig struct {
 	MinConns       int32
 	SimpleProtocol bool
 	ConnectTimeout time.Duration
+}
+
+// AuthConfig holds Supabase JWT verification settings.
+type AuthConfig struct {
+	JWKSURL      string
+	Issuer       string
+	JWKSCacheTTL time.Duration
 }
 
 func Load() (Config, error) {
@@ -73,6 +79,11 @@ func Load() (Config, error) {
 		originsRaw = "http://localhost:3000"
 	}
 
+	jwksCacheTTL, err := envDuration("SUPABASE_JWKS_CACHE_TTL", 1*time.Hour)
+	if err != nil {
+		return Config{}, err
+	}
+
 	cfg := Config{
 		Environment:        environment,
 		Port:               port,
@@ -87,6 +98,11 @@ func Load() (Config, error) {
 			MinConns:       minConns,
 			SimpleProtocol: simpleProtocol,
 			ConnectTimeout: connectTimeout,
+		},
+		Auth: AuthConfig{
+			JWKSURL:      strings.TrimSpace(os.Getenv("SUPABASE_JWKS_URL")),
+			Issuer:       strings.TrimSpace(os.Getenv("SUPABASE_JWT_ISSUER")),
+			JWKSCacheTTL: jwksCacheTTL,
 		},
 	}
 
@@ -125,6 +141,13 @@ func validate(cfg Config, originsConfigured bool) error {
 	}
 	if cfg.Environment != "development" && !originsConfigured {
 		return fmt.Errorf("CORS_ALLOWED_ORIGINS must be set outside development")
+	}
+
+	if cfg.Auth.JWKSURL == "" {
+		return fmt.Errorf("SUPABASE_JWKS_URL is required (e.g. https://<project-ref>.supabase.co/.well-known/jwks.json)")
+	}
+	if cfg.Auth.Issuer == "" {
+		return fmt.Errorf("SUPABASE_JWT_ISSUER is required (e.g. https://<project-ref>.supabase.co/auth/v1)")
 	}
 
 	return validateOrigins(cfg.CORSAllowedOrigins, cfg.Environment)
