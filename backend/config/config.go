@@ -37,7 +37,30 @@ type AuthConfig struct {
 	JWKSCacheTTL time.Duration
 }
 
+func loadDotEnv() {
+	content, err := os.ReadFile(".env")
+	if err != nil {
+		return
+	}
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			k := strings.TrimSpace(parts[0])
+			v := strings.TrimSpace(parts[1])
+			if os.Getenv(k) == "" {
+				os.Setenv(k, v)
+			}
+		}
+	}
+}
+
 func Load() (Config, error) {
+	loadDotEnv()
 	environment := strings.ToLower(strings.TrimSpace(envOrDefault("APP_ENV", "development")))
 	port, err := envPort("PORT", "8080")
 	if err != nil {

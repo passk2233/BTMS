@@ -28,13 +28,18 @@ on conflict (code) do update set
   description = excluded.description;
 
 -- =========================================================================
--- 2. Thesis categories (seeded)
+-- 2. Thesis categories (seeded) & Teacher Quota / Affiliation
 -- =========================================================================
+
+alter table public.teachers
+  add column if not exists affiliation text not null default 'CEIT',
+  add column if not exists quota integer not null default 5;
 
 create table public.thesis_categories (
   code text primary key,
   name text not null,
   sort_order integer not null default 0,
+  global_cap integer,
   created_at timestamptz not null default now(),
   constraint thesis_categories_code_format check (code = upper(code) and code ~ '^[A-Z][A-Z_]*$'),
   constraint thesis_categories_name_not_blank check (btrim(name) <> '')
@@ -43,14 +48,16 @@ create table public.thesis_categories (
 comment on table public.thesis_categories is
   'Thesis topic categories. Drives committee expertise matching and room allocation.';
 
-insert into public.thesis_categories (code, name, sort_order) values
-  ('DATABASE', 'Database', 1),
-  ('IOT', 'IoT', 2),
-  ('NETWORK', 'Network', 3),
-  ('MEDIA', 'Media', 4)
+insert into public.thesis_categories (code, name, sort_order, global_cap) values
+  ('SOFTWARE', 'Software', 1, null),
+  ('NETWORK', 'Network/Server', 2, null),
+  ('CYBERSECURITY', 'Cybersecurity', 3, null),
+  ('HARDWARE', 'Hardware (IoT, Robot)', 4, null),
+  ('MULTIMEDIA', 'Multimedia', 5, 12)
 on conflict (code) do update set
   name = excluded.name,
-  sort_order = excluded.sort_order;
+  sort_order = excluded.sort_order,
+  global_cap = excluded.global_cap;
 
 alter table public.theses
   add column category_code text references public.thesis_categories (code);
@@ -58,20 +65,41 @@ alter table public.theses
 create index theses_category_idx on public.theses (category_code);
 
 -- =========================================================================
--- 3. Teacher expertise (teacher <-> category, many-to-many)
+-- 3. Teacher expertise (teacher <-> category, many-to-many with eligibility)
 -- =========================================================================
 
 create table public.teacher_expertise (
   teacher_id uuid not null references public.teachers (id) on delete cascade,
   category_code text not null references public.thesis_categories (code),
+  is_primary boolean not null default true,
+  is_secondary boolean not null default false,
+  is_conditional boolean not null default false,
   created_at timestamptz not null default now(),
   primary key (teacher_id, category_code)
 );
 
 comment on table public.teacher_expertise is
-  'Categories a teacher is qualified to examine. Used to pick committee members.';
+  'Categories a teacher is qualified to supervise or examine. Supports primary vs secondary/conditional eligibility.';
 
 create index teacher_expertise_category_idx on public.teacher_expertise (category_code, teacher_id);
+
+-- =========================================================================
+-- 3b. Academic Timeline Stages (18 stages per academic year)
+-- =========================================================================
+
+create table public.academic_stages (
+  stage_no integer primary key,
+  name_lo text not null,
+  name_en text not null,
+  planned_window text not null,
+  phase text not null,
+  btms_module text not null,
+  sort_order integer not null,
+  created_at timestamptz not null default now()
+);
+
+comment on table public.academic_stages is
+  'Official 18-stage academic timeline tracking for the academic year.';
 
 -- =========================================================================
 -- 4. Exam rounds
@@ -182,11 +210,13 @@ alter table public.thesis_categories enable row level security;
 alter table public.teacher_expertise enable row level security;
 alter table public.exam_rounds enable row level security;
 alter table public.exam_round_rooms enable row level security;
+alter table public.academic_stages enable row level security;
 
 grant select on public.thesis_categories to authenticated;
 grant select on public.teacher_expertise to authenticated;
 grant select on public.exam_rounds to authenticated;
 grant select on public.exam_round_rooms to authenticated;
+grant select on public.academic_stages to authenticated;
 
 create policy thesis_categories_select_authenticated
 on public.thesis_categories for select to authenticated using (true);
@@ -199,5 +229,8 @@ on public.exam_rounds for select to authenticated using (true);
 
 create policy exam_round_rooms_select_authenticated
 on public.exam_round_rooms for select to authenticated using (true);
+
+create policy academic_stages_select_authenticated
+on public.academic_stages for select to authenticated using (true);
 
 commit;

@@ -6,18 +6,14 @@ import {
   Plus,
   Clock,
   CheckCircle,
-  Truck,
   BookOpen,
-  DollarSign,
   Package,
   Layers,
-  Sparkles,
   Search,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge, BadgeVariant } from "@/components/ui/badge";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { studentSearchableOptions, StudentRecord } from "@/lib/academic-directory";

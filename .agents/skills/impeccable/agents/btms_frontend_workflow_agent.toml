@@ -1,0 +1,26 @@
+name = "btms_frontend_workflow_agent"
+description = "Builds and wires Next.js App Router pages for Thesis Registration, Advisor Quota Directory, 18-Stage Progress Tracking, Examination Scheduling, and Finance Disbursement."
+
+[skills]
+references = [
+  "reference/new-work.md",
+  "reference/mode-operate.md",
+  "reference/layout.md",
+  "reference/adapt.md",
+  "reference/clarify.md"
+]
+
+[context]
+target_files = [
+  "frontend/src/lib/academic-directory.ts",
+  "frontend/src/services/api-client.ts",
+  "frontend/src/services/authenticated-api-client.ts",
+  "frontend/src/app/dashboard/page.tsx",
+  "frontend/src/app/thesis/page.tsx",
+  "frontend/src/app/progress/page.tsx",
+  "frontend/src/app/examination/page.tsx",
+  "frontend/src/app/finance/page.tsx",
+  "frontend/src/app/disbursement/page.tsx",
+  "frontend/src/components/dashboard/proposal-tracking-dashboard.tsx",
+  "frontend/src/components/examination/generate-schedule-modal.tsx"
+]

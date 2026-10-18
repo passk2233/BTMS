@@ -99,6 +99,51 @@ type CalculatedResult struct {
 	Criteria        []ScoreSummaryItem `json:"criteria"`
 }
 
+type ExamRoundItem struct {
+	ID           string  `json:"id"`
+	AcademicYear int32   `json:"academic_year"`
+	Period       string  `json:"period"`
+	RoundNo      int32   `json:"round_no"`
+	Name         string  `json:"name"`
+	StartDate    *string `json:"start_date"`
+	EndDate      *string `json:"end_date"`
+	Status       string  `json:"status"`
+	ClosedAt     *string `json:"closed_at,omitempty"`
+}
+
+type RoundRoomItem struct {
+	RoundID      string `json:"round_id"`
+	RoomID       string `json:"room_id"`
+	RoomName     string `json:"room_name"`
+	Building     string `json:"building"`
+	Floor        string `json:"floor"`
+	Capacity     int32  `json:"capacity"`
+	CategoryCode string `json:"category_code"`
+	CategoryName string `json:"category_name"`
+}
+
+type CommitteeFeeSummary struct {
+	RoundID        string             `json:"round_id"`
+	AcademicYear   int32              `json:"academic_year"`
+	Period         string             `json:"period"`
+	RoundNo        int32              `json:"round_no"`
+	ExamCount      int                `json:"exam_count"`
+	TotalAmount    float64            `json:"total_amount"`
+	Currency       string             `json:"currency"`
+	CommitteeItems []CommitteeFeeItem `json:"committee_items"`
+}
+
+type CommitteeFeeItem struct {
+	ExamID      string  `json:"exam_id"`
+	TeacherID   string  `json:"teacher_id"`
+	TeacherName string  `json:"teacher_name"`
+	Role        string  `json:"role"`
+	AttemptNo   int32   `json:"attempt_no"`
+	BaseRate    float64 `json:"base_rate"`
+	RetakeBonus float64 `json:"retake_bonus"`
+	TotalFee    float64 `json:"total_fee"`
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -607,6 +652,249 @@ func isValidExamTransition(from, to string) bool {
 		}
 	}
 	return false
+}
+
+func (s *ExamService) ListRounds(ctx context.Context, academicYear int32, period string) ([]ExamRoundItem, error) {
+	rows, err := s.queries.ListExamRounds(ctx, sqlc.ListExamRoundsParams{
+		Column1: academicYear,
+		Column2: period,
+	})
+	if err != nil {
+		return nil, utils.Internal(err)
+	}
+
+	items := make([]ExamRoundItem, len(rows))
+	for i, r := range rows {
+		items[i] = ExamRoundItem{
+			ID:           formatUUID(r.ID),
+			AcademicYear: r.AcademicYear,
+			Period:       r.Period,
+			RoundNo:      r.RoundNo,
+			Name:         r.Name,
+			StartDate:    pgDateToPtr(r.StartDate),
+			EndDate:      pgDateToPtr(r.EndDate),
+			Status:       r.Status,
+			ClosedAt:     pgTimestamptzToPtr(r.ClosedAt),
+		}
+	}
+	return items, nil
+}
+
+func (s *ExamService) GetRound(ctx context.Context, roundID string) (*ExamRoundItem, error) {
+	uid, err := parseUUID(roundID)
+	if err != nil {
+		return nil, utils.BadRequest("Invalid round ID.")
+	}
+
+	r, err := s.queries.GetExamRoundByID(ctx, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.NotFound("Exam round not found.")
+		}
+		return nil, utils.Internal(err)
+	}
+
+	return &ExamRoundItem{
+		ID:           formatUUID(r.ID),
+		AcademicYear: r.AcademicYear,
+		Period:       r.Period,
+		RoundNo:      r.RoundNo,
+		Name:         r.Name,
+		StartDate:    pgDateToPtr(r.StartDate),
+		EndDate:      pgDateToPtr(r.EndDate),
+		Status:       r.Status,
+		ClosedAt:     pgTimestamptzToPtr(r.ClosedAt),
+	}, nil
+}
+
+func (s *ExamService) CreateRound(ctx context.Context, academicYear int32, period string, roundNo int32, name, startDate, endDate string) (*ExamRoundItem, error) {
+	if period != "PROPOSAL" && period != "FINAL" {
+		return nil, utils.BadRequest("period must be PROPOSAL or FINAL.")
+	}
+	if roundNo <= 0 {
+		return nil, utils.BadRequest("round_no must be positive.")
+	}
+
+	r, err := s.queries.CreateExamRound(ctx, sqlc.CreateExamRoundParams{
+		AcademicYear: academicYear,
+		Period:       period,
+		RoundNo:      roundNo,
+		Name:         name,
+		StartDate:    dateToPgDate(&startDate),
+		EndDate:      dateToPgDate(&endDate),
+	})
+	if err != nil {
+		return nil, utils.Internal(err)
+	}
+
+	return &ExamRoundItem{
+		ID:           formatUUID(r.ID),
+		AcademicYear: r.AcademicYear,
+		Period:       r.Period,
+		RoundNo:      r.RoundNo,
+		Name:         r.Name,
+		StartDate:    pgDateToPtr(r.StartDate),
+		EndDate:      pgDateToPtr(r.EndDate),
+		Status:       r.Status,
+		ClosedAt:     pgTimestamptzToPtr(r.ClosedAt),
+	}, nil
+}
+
+func (s *ExamService) CloseRound(ctx context.Context, roundID string) (*ExamRoundItem, error) {
+	uid, err := parseUUID(roundID)
+	if err != nil {
+		return nil, utils.BadRequest("Invalid round ID.")
+	}
+
+	r, err := s.queries.CloseExamRound(ctx, uid)
+	if err != nil {
+		return nil, utils.Internal(err)
+	}
+
+	return &ExamRoundItem{
+		ID:           formatUUID(r.ID),
+		AcademicYear: r.AcademicYear,
+		Period:       r.Period,
+		RoundNo:      r.RoundNo,
+		Name:         r.Name,
+		StartDate:    pgDateToPtr(r.StartDate),
+		EndDate:      pgDateToPtr(r.EndDate),
+		Status:       r.Status,
+		ClosedAt:     pgTimestamptzToPtr(r.ClosedAt),
+	}, nil
+}
+
+func (s *ExamService) ListRoundRooms(ctx context.Context, roundID string) ([]RoundRoomItem, error) {
+	uid, err := parseUUID(roundID)
+	if err != nil {
+		return nil, utils.BadRequest("Invalid round ID.")
+	}
+
+	rows, err := s.queries.ListExamRoundRooms(ctx, uid)
+	if err != nil {
+		return nil, utils.Internal(err)
+	}
+
+	items := make([]RoundRoomItem, len(rows))
+	for i, r := range rows {
+		items[i] = RoundRoomItem{
+			RoundID:      formatUUID(r.RoundID),
+			RoomID:       formatUUID(r.RoomID),
+			RoomName:     r.RoomName,
+			Building:     r.Building,
+			Floor:        r.Floor,
+			Capacity:     r.Capacity,
+			CategoryCode: r.CategoryCode,
+			CategoryName: r.CategoryName,
+		}
+	}
+	return items, nil
+}
+
+func (s *ExamService) AssignRoundRoom(ctx context.Context, roundID, roomID, categoryCode string) (*RoundRoomItem, error) {
+	rUID, err := parseUUID(roundID)
+	if err != nil {
+		return nil, utils.BadRequest("Invalid round ID.")
+	}
+	rmUID, err := parseUUID(roomID)
+	if err != nil {
+		return nil, utils.BadRequest("Invalid room ID.")
+	}
+
+	row, err := s.queries.AssignExamRoundRoom(ctx, sqlc.AssignExamRoundRoomParams{
+		RoundID:      rUID,
+		RoomID:       rmUID,
+		CategoryCode: categoryCode,
+	})
+	if err != nil {
+		return nil, utils.Internal(err)
+	}
+
+	return &RoundRoomItem{
+		RoundID:      formatUUID(row.RoundID),
+		RoomID:       formatUUID(row.RoomID),
+		CategoryCode: row.CategoryCode,
+	}, nil
+}
+
+func (s *ExamService) CalculateRoundCommitteeFees(ctx context.Context, roundID string) (*CommitteeFeeSummary, error) {
+	uid, err := parseUUID(roundID)
+	if err != nil {
+		return nil, utils.BadRequest("Invalid round ID.")
+	}
+
+	round, err := s.queries.GetExamRoundByID(ctx, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.NotFound("Exam round not found.")
+		}
+		return nil, utils.Internal(err)
+	}
+
+	// Fetch active rates for BASE and RETAKE_BONUS
+	rates, err := s.queries.ListActiveCommitteeRates(ctx)
+	if err != nil {
+		return nil, utils.Internal(err)
+	}
+
+	rateMap := make(map[string]float64)
+	for _, r := range rates {
+		key := fmt.Sprintf("%s_%s_%s", r.ExamTypeCode, r.Role, r.RateKind)
+		val, _ := r.Amount.Float64Value()
+		rateMap[key] = val.Float64
+	}
+
+	// Fetch all committees in round
+	committeeRows, err := s.queries.ListExamCommitteesByRound(ctx, uid)
+	if err != nil {
+		return nil, utils.Internal(err)
+	}
+
+	examSet := make(map[string]bool)
+	var feeItems []CommitteeFeeItem
+	totalAmount := 0.0
+
+	for _, c := range committeeRows {
+		examSet[formatUUID(c.ExamID)] = true
+		baseKey := fmt.Sprintf("%s_%s_BASE", c.ExamTypeCode, c.Role)
+		baseRate := rateMap[baseKey]
+
+		retakeBonus := 0.0
+		if c.AttemptNo >= 2 {
+			bonusKey := fmt.Sprintf("%s_%s_RETAKE_BONUS", c.ExamTypeCode, c.Role)
+			retakeBonus = rateMap[bonusKey]
+		}
+
+		itemTotal := baseRate + retakeBonus
+		totalAmount += itemTotal
+
+		displayName := ""
+		if c.DisplayName.Valid {
+			displayName = c.DisplayName.String
+		}
+
+		feeItems = append(feeItems, CommitteeFeeItem{
+			ExamID:      formatUUID(c.ExamID),
+			TeacherID:   formatUUID(c.TeacherID),
+			TeacherName: displayName,
+			Role:        c.Role,
+			AttemptNo:   c.AttemptNo,
+			BaseRate:    baseRate,
+			RetakeBonus: retakeBonus,
+			TotalFee:    itemTotal,
+		})
+	}
+
+	return &CommitteeFeeSummary{
+		RoundID:        formatUUID(round.ID),
+		AcademicYear:   round.AcademicYear,
+		Period:         round.Period,
+		RoundNo:        round.RoundNo,
+		ExamCount:      len(examSet),
+		TotalAmount:    totalAmount,
+		Currency:       "LAK",
+		CommitteeItems: feeItems,
+	}, nil
 }
 
 func uuidToPtr(u pgtype.UUID) *string {

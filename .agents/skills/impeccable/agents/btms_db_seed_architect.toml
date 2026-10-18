@@ -1,0 +1,20 @@
+name = "btms_db_seed_architect"
+description = "Manages Supabase PostgreSQL migrations, RLS policies, and seeds the 2026-2027 CEIT advisor quotas (21 advisors, 84 slots) and 18-stage academic timeline."
+
+[skills]
+references = [
+  "reference/init.md",
+  "reference/extract.md",
+  "reference/harden.md"
+]
+
+[context]
+target_files = [
+  "supabase/migrations/20260928000000_bootstrap_identity_and_storage.sql",
+  "supabase/migrations/20261001000000_thesis_core.sql",
+  "supabase/migrations/20261001100000_examinations.sql",
+  "supabase/migrations/20261006000000_exam_rounds_and_categories.sql",
+  "supabase/migrations/20261006010000_exam_finance.sql",
+  "supabase/seed.sql",
+  "scripts/generate-types.ps1"
+]

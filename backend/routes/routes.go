@@ -16,6 +16,11 @@ type Deps struct {
 	Thesis       *handler.ThesisHandler
 	Exam         *handler.ExamHandler
 	Academic     *handler.AcademicHandler
+	Finance      *handler.FinanceHandler
+	Printing     *handler.PrintingHandler
+	File         *handler.FileHandler
+	Notification *handler.NotificationHandler
+	Report       *handler.ReportHandler
 	Queries      *sqlc.Queries
 	JWKSProvider *middleware.JWKSProvider
 	Issuer       string
@@ -67,13 +72,13 @@ func Register(router *gin.Engine, deps *Deps) {
 
 	// Domain routes — all require authentication
 	registerThesisRoutes(protected.Group("/theses"), deps.Thesis)
-	registerProgressRoutes(protected.Group("/progress"), stub)
+	registerProgressRoutes(protected.Group("/progress"), deps.Thesis)
 	registerExamRoutes(protected.Group("/exams"), protected.Group("/evaluation"), deps.Exam)
-	registerFinanceRoutes(protected, stub)
-	registerPrintingRoutes(protected.Group("/printing"), stub)
-	registerFileRoutes(protected.Group("/files"), stub)
-	registerNotificationRoutes(protected.Group("/notifications"), stub)
-	registerReportRoutes(protected.Group("/reports"), stub)
+	registerFinanceRoutes(protected, deps.Finance)
+	registerPrintingRoutes(protected.Group("/printing"), deps.Printing)
+	registerFileRoutes(protected.Group("/files"), deps.File)
+	registerNotificationRoutes(protected.Group("/notifications"), deps.Notification)
+	registerReportRoutes(protected.Group("/reports"), deps.Report)
 }
 
 func registerAuthRoutes(auth *gin.RouterGroup, stub gin.HandlerFunc) {
@@ -93,6 +98,8 @@ func registerThesisRoutes(theses *gin.RouterGroup, h *handler.ThesisHandler) {
 	theses.POST("", h.Create)
 	theses.GET("/mine", h.ListMine)
 	theses.GET("/counts", h.CountByStatus)
+	theses.GET("/categories", h.ListCategories)
+	theses.GET("/stages", h.ListStages)
 	theses.GET("/:id", h.Get)
 	theses.PUT("/:id", h.Update)
 	theses.POST("/:id/submit", h.Submit)
@@ -105,13 +112,21 @@ func registerThesisRoutes(theses *gin.RouterGroup, h *handler.ThesisHandler) {
 	theses.DELETE("/:id/advisors/:teacherId", h.RemoveAdvisor)
 }
 
-func registerProgressRoutes(progress *gin.RouterGroup, stub gin.HandlerFunc) {
-	progress.GET("", stub)
-	progress.GET("/theses/:id", stub)
-	progress.POST("/theses/:id/recalculate", stub)
+func registerProgressRoutes(progress *gin.RouterGroup, h *handler.ThesisHandler) {
+	progress.GET("/stages", h.ListStages)
 }
 
 func registerExamRoutes(exams, evaluation *gin.RouterGroup, h *handler.ExamHandler) {
+	// Round management
+	exams.GET("/rounds", h.ListRounds)
+	exams.POST("/rounds", h.CreateRound)
+	exams.GET("/rounds/:id", h.GetRound)
+	exams.POST("/rounds/:id/close", h.CloseRound)
+	exams.GET("/rounds/:id/rooms", h.ListRoundRooms)
+	exams.POST("/rounds/:id/rooms", h.AssignRoundRoom)
+	exams.GET("/rounds/:id/committee-fees", h.CalculateRoundCommitteeFees)
+
+	// Exam instances
 	exams.GET("", h.List)
 	exams.POST("", h.Schedule)
 	exams.GET("/:id", h.Get)
@@ -125,53 +140,45 @@ func registerExamRoutes(exams, evaluation *gin.RouterGroup, h *handler.ExamHandl
 	evaluation.POST("/scores", h.SubmitScore)
 }
 
-func registerFinanceRoutes(api *gin.RouterGroup, stub gin.HandlerFunc) {
-	paymentRoutes(api.Group("/payments"), stub)
-	feeRoutes(api.Group("/fees"), stub)
-	disbursementRoutes(api.Group("/disbursements"), stub)
+func registerFinanceRoutes(api *gin.RouterGroup, h *handler.FinanceHandler) {
+	payments := api.Group("/payments")
+	payments.GET("", h.ListPayments)
+	payments.POST("", h.CreatePayment)
+	payments.POST("/:id/verify", h.VerifyPayment)
+
+	fees := api.Group("/fees")
+	fees.GET("", h.ListFeeRates)
+	fees.GET("/committee", h.ListCommitteeRates)
+
+	disbursements := api.Group("/disbursements")
+	disbursements.GET("", h.ListDisbursements)
+	disbursements.GET("/wage-period", h.GetStaffWagePeriod)
+	disbursements.PUT("/:id/status", h.UpdatePayoutStatus)
 }
 
-func paymentRoutes(payments *gin.RouterGroup, stub gin.HandlerFunc) {
-	payments.GET("", stub)
-	payments.POST("", stub)
-	payments.GET("/:id", stub)
-	payments.PUT("/:id", stub)
-	payments.POST("/:id/verify", stub)
+func registerPrintingRoutes(printing *gin.RouterGroup, h *handler.PrintingHandler) {
+	printing.GET("", h.ListOrders)
+	printing.POST("", h.CreateOrder)
+	printing.GET("/:id", h.GetOrder)
+	printing.PUT("/:id/stage", h.UpdateStage)
+	printing.POST("/calculate-cost", h.CalculateCost)
 }
 
-func feeRoutes(fees *gin.RouterGroup, stub gin.HandlerFunc) {
-	fees.GET("", stub)
-	fees.POST("", stub)
-	fees.PUT("/:id", stub)
+func registerFileRoutes(files *gin.RouterGroup, h *handler.FileHandler) {
+	files.POST("", h.CreateFile)
+	files.GET("/thesis/:thesisId", h.ListFilesByThesis)
+	files.POST("/revisions", h.CreateRevision)
+	files.GET("/revisions/thesis/:thesisId", h.ListRevisionsByThesis)
+	files.POST("/revisions/:id/review", h.ReviewRevision)
 }
 
-func disbursementRoutes(disbursements *gin.RouterGroup, stub gin.HandlerFunc) {
-	disbursements.GET("", stub)
-	disbursements.POST("", stub)
-	disbursements.GET("/:id", stub)
-	disbursements.PUT("/:id", stub)
+func registerNotificationRoutes(notifications *gin.RouterGroup, h *handler.NotificationHandler) {
+	notifications.GET("", h.List)
+	notifications.POST("/:id/read", h.MarkRead)
+	notifications.POST("/read-all", h.MarkAllRead)
 }
 
-func registerPrintingRoutes(printing *gin.RouterGroup, stub gin.HandlerFunc) {
-	printing.GET("", stub)
-	printing.POST("", stub)
-	printing.GET("/:id", stub)
-	printing.PUT("/:id", stub)
-	printing.POST("/:id/calculate-cost", stub)
-}
-
-func registerFileRoutes(files *gin.RouterGroup, stub gin.HandlerFunc) {
-	files.GET("", stub)
-	files.POST("", stub)
-	files.GET("/:id", stub)
-}
-
-func registerNotificationRoutes(notifications *gin.RouterGroup, stub gin.HandlerFunc) {
-	notifications.GET("", stub)
-	notifications.POST("/:id/read", stub)
-}
-
-func registerReportRoutes(reports *gin.RouterGroup, stub gin.HandlerFunc) {
-	reports.GET("", stub)
-	reports.GET("/:name", stub)
+func registerReportRoutes(reports *gin.RouterGroup, h *handler.ReportHandler) {
+	reports.GET("/dashboard", h.GetDashboardOverview)
+	reports.GET("/:name", h.GetReportByName)
 }

@@ -1,0 +1,17 @@
+name = "btms_qa_doc_reviewer"
+description = "Reviews project documentation, enforces Impeccable component audits, synchronizes the 18-stage academic timeline, and ensures clean CI verification."
+
+[skills]
+references = [
+  "reference/audit.md",
+  "reference/component-review.md",
+  "reference/document.md"
+]
+
+[context]
+target_files = [
+  "TIMELINE.md",
+  "PROGRESS.md",
+  "implementation-plan.md",
+  ".github/workflows/ci.yml"
+]

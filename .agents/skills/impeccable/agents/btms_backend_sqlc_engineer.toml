@@ -1,0 +1,28 @@
+name = "btms_backend_sqlc_engineer"
+description = "Implements Go backend handlers, services, RBAC middleware, and SQLC queries enforcing thesis group constraints (2-3 students, 84 total quota, Max 12 Multimedia) and exam finance calculations."
+
+[skills]
+references = [
+  "reference/harden.md",
+  "reference/optimize.md",
+  "reference/doctor.md"
+]
+
+[context]
+target_files = [
+  "backend/sqlc.yaml",
+  "backend/db/queries/identity.sql",
+  "backend/db/queries/thesis.sql",
+  "backend/db/queries/examination.sql",
+  "backend/db/queries/finance.sql",
+  "backend/service/academic.go",
+  "backend/service/thesis.go",
+  "backend/service/exam.go",
+  "backend/service/user.go",
+  "backend/handler/academic.go",
+  "backend/handler/thesis.go",
+  "backend/handler/exam.go",
+  "backend/handler/user.go",
+  "backend/handler/placeholder.go",
+  "backend/routes/routes.go"
+]

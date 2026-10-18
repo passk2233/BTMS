@@ -16,10 +16,13 @@ import {
   Search,
   Bell,
   LogOut,
-  ChevronDown,
+  CreditCard,
   Menu,
   X,
   UserCheck,
+  CheckCheck,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +41,7 @@ const navItems: NavItem[] = [
   { href: "/examination", label: "Examination Hub", labelLao: "ສູນການສອບເສັງ", icon: CalendarCheck },
   { href: "/progress", label: "Progress Tracking", labelLao: "ຕິດຕາມຄວາມຄືບໜ້າ", icon: TrendingUp },
   { href: "/finance", label: "Financial Records", labelLao: "ບັນທຶກການເງິນ", icon: Receipt },
+  { href: "/disbursement", label: "Disbursement", labelLao: "ເບີກຈ່າຍຄ່າຕອບແທນ", icon: CreditCard },
   { href: "/printing", label: "Printing Orders", labelLao: "ຄຳສັ່ງພິມບົດ", icon: Printer },
   { href: "/reports", label: "Reports & Analytics", labelLao: "ລາຍງານ ແລະ ສະຖິຕິ", icon: BarChart3 },
   { href: "/users", label: "User Administration", labelLao: "ຄຸ້ມຄອງຜູ້ໃຊ້ງານ", icon: Users },
@@ -53,6 +57,57 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, profile, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeRoleIndex, setActiveRoleIndex] = useState(0);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([
+    {
+      id: "NOTIF-001",
+      title: "ປະກາດຕາຕະລາງສອບປ້ອງກັນຫົວບົດ ຊຸດທີ 1",
+      message: "ຕາຕະລາງສອບປ້ອງກັນຫົວບົດວິທະຍານິພົນ ຊຸດທີ 1 (Proposal Defense Round 1) ໄດ້ຖືກອະນຸມັດ ແລະ ປະກາດແລ້ວ.",
+      type: "EXAM",
+      link: "/examination",
+      is_read: false,
+      created_at: "2026-10-02 09:30",
+    },
+    {
+      id: "NOTIF-002",
+      title: "ກວດສອບສະລິບໂອນເງິນສຳເລັດ",
+      message: "ສະລິບໂອນເງິນຄ່າທຳນຽມສອບປ້ອງກັນກຸ່ມ CS-2026-001 ໄດ້ຮັບການຢືນຢັນ ແລະ ອອກໃບຮັບເງິນແລ້ວ.",
+      type: "FINANCE",
+      link: "/finance",
+      is_read: false,
+      created_at: "2026-10-02 10:15",
+    },
+    {
+      id: "NOTIF-003",
+      title: "ບັນທຶກຄະແນນສອບປ້ອງກັນບົດຈົບຊັ້ນ",
+      message: "ຄະນະກຳມະການໄດ້ບັນທຶກຄະແນນສອບເສັງຮອບທີ 1 ຂອງ 12 ກຸ່ມສຳເລັດແລ້ວ ພ້ອມອອກໃບຄະແນນທາງການ.",
+      type: "SCORE",
+      link: "/examination",
+      is_read: false,
+      created_at: "2026-10-05 14:00",
+    },
+    {
+      id: "NOTIF-004",
+      title: "ຄຳສັ່ງພິມບົດໂຄງການສຳເລັດແລ້ວ",
+      message: "ງານພິມບົດໂຄງການເລກທີ #PRT-2026-003 ເຂົ້າເຫຼັ້ມປົກແຂງສີແດງຄຳ ພິມສຳເລັດແລ້ວ ພ້ອມສົ່ງມອບ.",
+      type: "PRINT",
+      link: "/printing",
+      is_read: true,
+      created_at: "2026-10-08 11:45",
+    },
+  ]);
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  const markAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+    );
+  };
+
+  const markAllAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+  };
 
   // Available roles: 2 roles with equal capabilities
   const availableRoles = ["STAFF", "HEAD"];
@@ -202,14 +257,99 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span>ສົກຮຽນ 2026 / ພາກຮຽນ 1</span>
             </div>
 
-            {/* Notification Bell */}
-            <button 
-              className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-              title="ແຈ້ງເຕືອນ"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
-            </button>
+            {/* Notification Bell & Dropdown */}
+            <div className="relative">
+              <button 
+                onClick={() => setNotificationOpen(!notificationOpen)}
+                className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                title="ແຈ້ງເຕືອນ"
+              >
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notificationOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setNotificationOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                    <div className="p-3.5 bg-slate-900 text-white flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Bell className="h-4 w-4 text-sky-400" />
+                        <span className="text-xs font-bold">ການແຈ້ງເຕືອນລະບົບ</span>
+                        {unreadCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-[10px] font-bold text-white">
+                            {unreadCount} ໃໝ່
+                          </span>
+                        )}
+                      </div>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          className="text-[11px] text-sky-300 hover:text-white flex items-center gap-1 transition-colors"
+                        >
+                          <CheckCheck className="h-3 w-3" />
+                          <span>ອ່ານທັງໝົດ</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                      {notifications.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-slate-400">
+                          ບໍ່ມີການແຈ້ງເຕືອນໃໝ່
+                        </div>
+                      ) : (
+                        notifications.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`p-3 transition-colors hover:bg-slate-50 cursor-pointer ${
+                              !item.is_read ? "bg-sky-50/40" : ""
+                            }`}
+                            onClick={() => markAsRead(item.id)}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <span className="text-xs font-semibold text-slate-800 line-clamp-1">
+                                {item.title}
+                              </span>
+                              {!item.is_read && (
+                                <span className="h-2 w-2 rounded-full bg-sky-500 shrink-0 mt-1" />
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-600 line-clamp-2 mb-2 leading-relaxed">
+                              {item.message}
+                            </p>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {item.created_at}
+                              </span>
+                              <Link
+                                href={item.link}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  markAsRead(item.id);
+                                  setNotificationOpen(false);
+                                }}
+                                className="text-sky-600 hover:text-sky-700 font-medium flex items-center gap-0.5"
+                              >
+                                ເປີດເບິ່ງ <ExternalLink className="h-2.5 w-2.5" />
+                              </Link>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Header User Badge */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-200">

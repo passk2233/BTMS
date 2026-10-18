@@ -45,17 +45,17 @@ RETURNING id, profile_id, student_code, department, faculty, created_at, updated
 -- =========================================================================
 
 -- name: GetTeacherByProfileID :one
-SELECT id, profile_id, academic_title, department, faculty, created_at, updated_at
+SELECT id, profile_id, academic_title, department, faculty, affiliation, quota, created_at, updated_at
 FROM public.teachers
 WHERE profile_id = $1;
 
 -- name: GetTeacherByID :one
-SELECT id, profile_id, academic_title, department, faculty, created_at, updated_at
+SELECT id, profile_id, academic_title, department, faculty, affiliation, quota, created_at, updated_at
 FROM public.teachers
 WHERE id = $1;
 
 -- name: ListTeachers :many
-SELECT t.id, t.profile_id, t.academic_title, t.department, t.faculty,
+SELECT t.id, t.profile_id, t.academic_title, t.department, t.faculty, t.affiliation, t.quota,
        p.display_name, t.created_at, t.updated_at
 FROM public.teachers t
 JOIN public.profiles p ON p.id = t.profile_id
@@ -63,7 +63,7 @@ ORDER BY p.display_name
 LIMIT $1 OFFSET $2;
 
 -- name: ListTeachersWithStats :many
-SELECT t.id, t.profile_id, t.academic_title, t.department, t.faculty,
+SELECT t.id, t.profile_id, t.academic_title, t.department, t.faculty, t.affiliation, t.quota,
        p.display_name, t.created_at, t.updated_at,
        COUNT(DISTINCT ta.thesis_id)::int AS advising_count,
        COUNT(DISTINCT ec.exam_id)::int AS committee_count
@@ -75,15 +75,15 @@ GROUP BY t.id, p.display_name
 ORDER BY p.display_name;
 
 -- name: CreateTeacher :one
-INSERT INTO public.teachers (profile_id, academic_title, department, faculty)
-VALUES ($1, $2, $3, $4)
-RETURNING id, profile_id, academic_title, department, faculty, created_at, updated_at;
+INSERT INTO public.teachers (profile_id, academic_title, department, faculty, affiliation, quota)
+VALUES ($1, $2, $3, $4, coalesce(nullif($5::text, ''), 'CEIT'), coalesce($6::int, 5))
+RETURNING id, profile_id, academic_title, department, faculty, affiliation, quota, created_at, updated_at;
 
 -- name: UpdateTeacher :one
 UPDATE public.teachers
-SET academic_title = $2, department = $3, faculty = $4, updated_at = now()
+SET academic_title = $2, department = $3, faculty = $4, affiliation = coalesce(nullif($5::text, ''), affiliation), quota = coalesce($6::int, quota), updated_at = now()
 WHERE id = $1
-RETURNING id, profile_id, academic_title, department, faculty, created_at, updated_at;
+RETURNING id, profile_id, academic_title, department, faculty, affiliation, quota, created_at, updated_at;
 
 -- name: ListTeacherAdvisingTheses :many
 SELECT t.id AS thesis_id, t.topic_th, t.topic_en, t.status, t.academic_year, t.semester,
@@ -108,8 +108,8 @@ ORDER BY e.scheduled_date DESC NULLS LAST;
 -- =========================================================================
 
 -- name: CreateThesis :one
-INSERT INTO public.theses (topic_th, topic_en, abstract_th, abstract_en, status, academic_year, semester)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO public.theses (topic_th, topic_en, abstract_th, abstract_en, status, academic_year, semester, category_code)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: GetThesisByID :one
@@ -117,7 +117,7 @@ SELECT * FROM public.theses WHERE id = $1;
 
 -- name: UpdateThesisTopics :one
 UPDATE public.theses
-SET topic_th = $2, topic_en = $3, abstract_th = $4, abstract_en = $5
+SET topic_th = $2, topic_en = $3, abstract_th = $4, abstract_en = $5, category_code = coalesce($6, category_code)
 WHERE id = $1
 RETURNING *;
 
@@ -260,3 +260,41 @@ ORDER BY version_number DESC;
 -- name: InsertAuditLog :exec
 INSERT INTO public.audit_logs (actor_id, request_id, action, entity_type, entity_id, old_values, new_values, metadata)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+
+-- =========================================================================
+-- Quota, Category & Membership Validations (Academic Rules)
+-- =========================================================================
+
+-- name: CountThesisMembers :one
+SELECT COUNT(*)::int AS count
+FROM public.thesis_members
+WHERE thesis_id = $1;
+
+-- name: GetTeacherQuotaStats :one
+SELECT t.id, t.quota,
+       COUNT(DISTINCT ta.thesis_id)::int AS assigned_count
+FROM public.teachers t
+LEFT JOIN public.thesis_advisors ta ON ta.teacher_id = t.id
+WHERE t.id = $1
+GROUP BY t.id, t.quota;
+
+-- name: ListTeacherExpertiseByTeacherID :many
+SELECT category_code, is_primary, is_secondary, is_conditional
+FROM public.teacher_expertise
+WHERE teacher_id = $1;
+
+-- name: CountActiveThesesByCategory :one
+SELECT COUNT(*)::int AS count
+FROM public.theses
+WHERE category_code = $1
+  AND status NOT IN ('DRAFT', 'CANCELLED');
+
+-- name: GetCategoryByCode :one
+SELECT code, name, sort_order, global_cap
+FROM public.thesis_categories
+WHERE code = $1;
+
+-- name: ListAcademicStages :many
+SELECT stage_no, name_lo, name_en, planned_window, phase, btms_module, sort_order
+FROM public.academic_stages
+ORDER BY sort_order;

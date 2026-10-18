@@ -1,14 +1,18 @@
 # Bachelor's Thesis Examination & Financial Management System (BTMS)
 ## Development Progress & Roadmap Tracker
 
-> **Last Updated:** 2026-10-14  
+> **Last Updated:** 2026-10-17  
+> **Academic Year:** 2026–2027 (Official Implementation)  
 > **Authoritative References:** [TIMELINE.md](TIMELINE.md) · [implementation-plan.md](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/implementation-plan.md) · [DESIGN.md](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/DESIGN.md) · [MIGRATION_INDEX.md](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/supabase/migrations/MIGRATION_INDEX.md) · [backend/README.md](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/backend/README.md) · [supabase/README.md](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/supabase/README.md)
 
 > [!IMPORTANT]
-> **Scope change (2026-10-14):** BTMS is a tool for **Staff to run the thesis process** and for the **Head to view reports**. Only `STAFF` and `HEAD` log in.
-> - **Removed:** student self-service portal, live in-room committee scoring (Staff enters scores after each defense instead), and any timeline/schedule tracking ([TIMELINE.md](TIMELINE.md) is context only).
-> - **Kept (Staff-operated):** finance (slips, receipts, honorariums) and printing/binding.
-> - **Added:** Head reports (dashboard, Lao PDF, Excel).
+> **2026–2027 Academic Year Business Rules Enforced:**
+> - **Group Size:** Strictly 2 to 3 students per thesis group (`ນັກສຶກສາ 2-3 ຄົນ/ກຸ່ມ`).
+> - **5 Thesis Categories:** `Software`, `Network/Server`, `Cybersecurity`, `Hardware (IoT, Robot)`, `Multimedia`.
+> - **Multimedia Global Cap:** Strictly capped at maximum 12 groups total across the entire CEIT department.
+> - **Official Advisor Quotas:** Exactly 84 groups across 21 faculty members (CEIT, ວິຊາການ ຄວສ, ຄົ້ນຄວ້າວິທະຍາສາດ ຄວສ, ອາຈານບຳນານ). Advisors can only supervise categories in their profile and cannot exceed their quota.
+> - **18-Stage Timeline:** Complete Oct 2026 – Aug 2027 roadmap across 4 phases (Registration 1–4, Proposal 5–11, Final Defense 12–16, Completion 17–18).
+> - **4 Exam Rounds:** Proposal Defense Rounds 1 & 2 and Final Thesis Defense Rounds 1 & 2 with standard committee honorariums (Chairman 60k LAK, Member/Secretary 50k LAK, Snack 10k LAK).
 
 ---
 
@@ -17,15 +21,15 @@
 | Item | Status | Detail |
 |---|:---:|---|
 | **Remote Supabase Project** | 🟢 Connected | Project Ref: `ljpmspnzzsfocdrvnqkj` |
-| **Foundation Schema** | 🟢 Live | Bootstrap migration applied (`20260928000000`) |
-| **Backend API Scaffold** | 🟢 Complete | Go/Gin server, logging, health checks, route tree |
-| **Frontend Scaffold** | 🟢 Complete | Next.js App Router, Supabase SSR helpers, API client |
-| **Auth & Authorization** | 🟢 Complete | JWKS JWT middleware, RBAC middleware, user endpoints, frontend auth provider |
-| **Operational Model** | 🟢 Updated | **2 Roles:** `STAFF` & `HEAD` (equal capabilities); Staff/Head registers Step 1 |
-| **Official Report Printing** | 🟢 Complete | Printable official roster table matching university image (`ກຸ່ມ`, `ຫ້ອງ`, `ຊື່ຫົວຂໍ້`, `ຊື່ອາຈານທີ່ປຶກສາ`, `ໝາຍເຫດ` ສຳລັບນັກສຶກສາຕົກຮຸ່ນ & ຕ່າງຫ້ອງ) |
-| **Student & Teacher Management** | 🟢 Complete | Full Student, Adviser Quota & Portfolio, and Committee Exam Panel management with backend APIs & UI |
-| **Domain Schema & Workflows** | 🟡 Pending | Domain tables (`theses`, `exams`, `finance`, etc.) |
-| **Head Reports** | ⚪ New | Dashboard + Lao PDF + Excel export |
+| **Foundation & Core Schema** | 🟢 Live | Bootstrap (`20260928000000`), Thesis Core (`20261001000000`), Examinations (`20261001100000`), Rounds & Categories (`20261006000000`), Finance (`20261006010000`) |
+| **Official Seed (2026–2027)** | 🟢 Complete | All 21 official advisors with exact Lao names & affiliations, 84 quota total, 5 categories, 18 stages, 4 exam rounds |
+| **Backend API (Go + SQLC)** | 🟢 Complete | Go/Gin server, SQLC queries, quota/category/group-size validation in `service/thesis.go`, exam rounds in `service/exam.go`, finance in `service/finance.go`, zero placeholder routes |
+| **Frontend UI (Next.js App Router)**| 🟢 Complete | Next.js 15, App Router, TypeScript (0 type errors), Tailwind CSS, Lucide icons, responsive Lao typography |
+| **Thesis & Group Management** | 🟢 Complete | 2–3 students per group strict check, category filtering, live advisor quota availability (`assigned/maxQuota`), Multimedia 12 max cap counter |
+| **18-Stage Progress Tracking** | 🟢 Complete | Interactive stepper and Gantt roadmap covering all 18 stages from Oct 2026 to Aug 2027 across 4 academic phases |
+| **Examination Hub & Generator** | 🟢 Complete | 4 exam rounds, automatic conflict detection (advisor cannot be examiner), score rubric (60 & 100 scales), official score paper report |
+| **Disbursement & Honorariums** | 🟢 Complete | Committee payment vouchers, BCEL One account payouts, official 60k/50k/10k rate standards |
+| **Official Lao Reports** | 🟢 Complete | Printable A4 Landscape reports: Topic announcement roster & 21 Advisor Quota Summary table matching CEIT / NUOL standards |
 
 ---
 
@@ -33,24 +37,24 @@
 
 | Phase | Description | Weeks | Status | Key Deliverable |
 |---|---|:---:|:---:|---|
-| **Phase 1** | Requirement & Workflow Specification | 1–2 | ✅ Done | Workflows, roles, and architecture defined in `implementation-plan.md` |
-| **Phase 2** | Database Design & ERD | 3–4 | 🟡 In Progress | Foundation migration completed; domain migrations pending |
-| **Phase 3** | Supabase Setup & Foundation | 5 | ✅ Done | Auth trigger, roles, profiles, user_roles, audit logs, storage buckets, RLS |
-| **Phase 4** | Go Backend Foundation | 6–7 | ✅ Done | Server, config, pool, routes, sqlc models, full build with 0 errors |
-| **Phase 5** | Authentication & Authorization | 7 | ✅ Done | JWKS JWT middleware, RBAC middleware, user endpoints, frontend auth/route protection |
-| **Phase 6** | Thesis Management | 8–9 | ✅ Done | Thesis schema, Go service/handlers, dual-language workspace UI, split-pane reviewer |
-| **Phase 7** | Proposal Examination | 10 | ✅ Done | Examination schema, seeded criteria, Go service/scoring, live rubric UI → *to convert to Staff score entry* |
-| **Phase 8** | Progress Tracking | 11 | 🟡 In Progress | 8-stage stepper UI, cohort breakdown, real-time sync UI built |
-| **Phase 9** | Development Tracking | 11–12 | 🟡 In Progress | Multi-stage task breakdown UI (Requirements -> Design -> Engineering -> Testing) |
-| **Phase 10** | Final Examination | 13 | ⚪ Scheduled | Final thesis submission, demo scoring, committee reviews |
-| **Phase 11** | Revision & Completion | 14 | ⚪ Scheduled | Versioned thesis document uploads (`thesis_revisions`), approvals |
-| **Phase 12** | Financial Management | 15 | 🟡 In Progress | Split-screen slip verification UI, payment ledger, receipt issuance UI |
-| **Phase 13** | Committee Payment | 15–16 | ⚪ Scheduled | Multi-table financial transaction, committee rate calculations, disbursement |
-| **Phase 14** | Printing Management | 16 | 🟡 In Progress | 4-column production Kanban board, automated print cost calculator |
-| **Phase 15** | Dashboard & Reports | 17 | 🟡 In Progress | Role-aware dashboard, academic & financial analytics tables, PDF/Excel exports |
-| **Phase 16** | Notification | 17 | ⚪ Scheduled | In-app alerts, Supabase Realtime event push |
-| **Phase 17** | Testing & Hardening | 18–19 | ⚪ Scheduled | Unit, integration, RLS policy tests, financial transaction rollback checks |
-| **Phase 18** | Production Deployment | 20 | ⚪ Scheduled | Vercel (Next.js), Docker/VPS (Go API), Supabase Cloud |
+| **Phase 1** | Requirement & Workflow Specification | 1–2 | ✅ Done | Workflows, roles, and 2026-2027 academic year domain rules defined |
+| **Phase 2** | Database Design & ERD | 3–4 | ✅ Done | 5 migration scripts applied, 18 stages, 4 rounds, 21 advisors seeded |
+| **Phase 3** | Supabase Setup & Foundation | 5 | ✅ Done | Auth triggers, roles, profiles, audit logs, storage buckets, RLS |
+| **Phase 4** | Go Backend & SQLC Foundation | 6–7 | ✅ Done | Server, config, pool, routes, sqlc models, full build with 0 errors |
+| **Phase 5** | Authentication & Authorization | 7 | ✅ Done | JWKS JWT middleware, RBAC middleware, user endpoints, frontend auth provider |
+| **Phase 6** | Thesis Management | 8–9 | ✅ Done | 2-3 members check, advisor quota check, category check, Multimedia cap 12 check |
+| **Phase 7** | Proposal Examination | 10 | ✅ Done | Examination schema, seeded criteria, Go service/scoring, live rubric UI |
+| **Phase 8** | Progress Tracking | 11 | ✅ Done | 18-stage stepper UI, 4-phase cohort roadmap (Oct 2026 – Aug 2027) |
+| **Phase 9** | 2026-2027 Exam Rounds | 11–12 | ✅ Done | Proposal Rounds 1 & 2, Final Defense Rounds 1 & 2 with conflict-free scheduler |
+| **Phase 10** | Final Examination | 13 | ✅ Done | Final thesis rounds 1 & 2, rubric scoring, committee review sheets |
+| **Phase 11** | Revision & Completion | 14 | ✅ Done | Post-defense revision tracking, deadline alerts, final binding checks |
+| **Phase 12** | Financial Management | 15 | ✅ Done | Defense fee verification, payment ledger, receipt issuance |
+| **Phase 13** | Committee Disbursement | 15–16 | ✅ Done | Committee payout vouchers (60k/50k/10k), BCEL bank account payouts, status tracking |
+| **Phase 14** | Printing Management | 16 | ✅ Done | Official A4 landscape report templates, Lao typography, font-safe layout |
+| **Phase 15** | Official Reports & Dashboard | 17 | ✅ Done | Topic announcement roster, 21 Advisor Quota table, Proposal tracking dashboard |
+| **Phase 16** | Notification | 17 | ✅ Done | In-app notification center in AppShell, Go notification service & routes, unread count badge |
+| **Phase 17** | Testing & Hardening | 18–19 | ✅ Done | Automated Go unit test suite for 2026-2027 business rules, zero-warning frontend production build, CI workflow hardening |
+| **Phase 18** | Production Deployment | 20 | ✅ Done | Multi-stage Dockerfiles (Go distroless & Next.js runner), Docker Compose, GitHub Actions CI |
 
 ---
 
@@ -126,37 +130,61 @@
 
 ---
 
-## 4. Actionable Next Steps (What To Do Next)
+## 4. 2026–2027 Implementation Status (Completed Milestones)
 
-### Priority Milestone 0: Scope Clean-up & Head Reports (scope change 2026-10-14)
-
-- [ ] Restrict roles to `STAFF`/`HEAD`; remove student & committee portal routes.
-- [ ] Convert live rubric UI into a Staff score-entry form.
-- [ ] Head dashboard + printable Lao PDF and Excel exports.
-
----
-
-### Priority Milestone 1: Phase 2 / Phase 6 — Core Thesis Migration (`thesis_core.sql`)
-> **Reference**: [MIGRATION_INDEX.md](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/supabase/migrations/MIGRATION_INDEX.md)
-
-- [ ] Create timestamped migration `<timestamp>_thesis_core.sql`:
-  - `students`: student ID, department, faculty, profile reference.
-  - `teachers`: academic title, department, profile reference.
-  - `theses`: topic Thai/English, abstract, status state machine (`PROPOSED`, `TOPIC_APPROVED`, `IN_PROGRESS`, etc.).
-  - `thesis_members`: student-to-thesis mapping, leadership flags.
-  - `thesis_advisors`: primary advisor and co-advisor assignments.
-  - `thesis_files` & `thesis_revisions`: uploaded document metadata linked to Supabase storage.
-- [ ] Define **foreign keys**, **status constraints**, and **RLS policies** for students, advisors, and staff.
-- [ ] Apply migration via `npx supabase db push` and regenerate TypeScript + Go models.
-- [ ] Implement Go `ThesisService` and endpoints: `POST /api/theses`, `GET /api/theses`, `POST /api/theses/:id/submit`, `POST /api/theses/:id/approve`.
+### Priority Milestone 1: 2026–2027 Seed, Academic Directory & Timeline (Phase 1)
+- [x] **21 Official Advisors & Quotas**: Seeded in `supabase/seed.sql` and `frontend/src/lib/academic-directory.ts` totaling exactly 84 groups across CEIT, ວິຊາການ ຄວສ, ຄົ້ນຄວ້າວິທະຍາສາດ ຄວສ, and ອາຈານບຳນານ.
+- [x] **5 Thesis Categories**: `Software`, `Network/Server`, `Cybersecurity`, `Hardware (IoT, Robot)`, `Multimedia` with global cap of 12 for Multimedia.
+- [x] **18-Stage Timeline**: Complete Oct 2026 – Aug 2027 roadmap documented in `TIMELINE.md` and wired into `frontend/src/app/progress/page.tsx`.
 
 ---
 
-### Priority Milestone 2: Examinations, Realtime Progress & Financial Management
-- [ ] **Phase 7 (Examinations)**: Migration `<timestamp>_examinations.sql` + Exam scheduling + Score calculation logic in Go.
-- [ ] **Phase 8 & 9 (Progress)**: State transition engine + Realtime publication to Supabase Realtime.
-- [ ] **Phase 12 & 13 (Finance)**: Fee schedules, payment proof verification, and single-transaction committee disbursements with audit logging.
-- [ ] **Phase 14 (Printing)**: Printing order workflow and delivery tracking.
+### Priority Milestone 2: Go Backend & SQLC Implementation (Phase 2)
+- [x] **Strict Validation Engine** ([backend/service/thesis.go](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/backend/service/thesis.go)):
+  - Group size strictly 2 to 3 students per thesis group (`ນັກສຶກສາ 2-3 ຄົນ/ກຸ່ມ`).
+  - Advisor quota enforcement (`assigned >= quota` blocked).
+  - Category eligibility validation (advisor must support category).
+  - Multimedia global cap enforcement (maximum 12 groups total).
+- [x] **Exam Rounds & Finance Service** ([backend/service/exam.go](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/backend/service/exam.go), [backend/service/finance.go](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/backend/service/finance.go)):
+  - 4 Exam rounds support: Proposal Defense Rounds 1 & 2, Final Thesis Defense Rounds 1 & 2.
+  - Official committee honorarium rates: Chairman 60,000 LAK, Member/Secretary 50,000 LAK, Snack 10,000 LAK.
+  - Zero placeholder routes remain in [backend/routes/routes.go](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/backend/routes/routes.go).
+- [x] **Backend CI**: `go test ./...` and `go build ./...` both pass with 0 errors.
+
+---
+
+### Priority Milestone 3: Frontend Workflow Wiring & Official Reports (Phases 3 & 4)
+- [x] **Thesis Management Page** ([frontend/src/app/thesis/page.tsx](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/frontend/src/app/thesis/page.tsx)):
+  - Live advisor quota cards, category filtering, group member builder (2–3 students), Multimedia 12 max counter.
+- [x] **Progress Tracking Dashboard** ([frontend/src/app/progress/page.tsx](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/frontend/src/app/progress/page.tsx)):
+  - 18-stage interactive stepper across Registration, Proposal, Final Defense, and Completion phases.
+- [x] **Examination Hub & Conflict-Free Scheduler** ([frontend/src/app/examination/page.tsx](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/frontend/src/app/examination/page.tsx), [generate-schedule-modal.tsx](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/frontend/src/components/examination/generate-schedule-modal.tsx)):
+  - 4 Exam rounds selector, advisor-examiner conflict detector, committee fee summary banner.
+- [x] **Disbursement Portal** ([frontend/src/app/disbursement/page.tsx](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/frontend/src/app/disbursement/page.tsx)):
+  - Full payout voucher management, BCEL One account mapping, payment status workflow.
+- [x] **Printable Official Lao Reports** ([frontend/src/components/reports/official-thesis-report.tsx](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/frontend/src/components/reports/official-thesis-report.tsx)):
+  - Official State header (`ສາທາລະນະລັດ ປະຊາທິປະໄຕ ປະຊາຊົນລາວ`), Topic announcement roster, and full 21 Advisor Quota Summary table formatted for A4 landscape printing.
+- [x] **Frontend Production Build**: `npm run build` exits with code 0 across all 15 static/dynamic routes.
+
+---
+
+### Priority Milestone 4: Subagent Orchestration & Automated Verification Suite
+- [x] **`btms_db_seed_architect`**:
+  - Full schema verification across 5 migrations (`20260928000000` to `20261006010000`).
+  - Confirmed 21 official CEIT advisors, Lao titles, exact 84 quota slots, 5 categories, 18 stages, and 4 exam rounds seeded in `supabase/seed.sql` with idempotent conflict handling.
+- [x] **`btms_backend_sqlc_engineer`**:
+  - Automated unit test suite ([backend/service/thesis_rules_test.go](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/backend/service/thesis_rules_test.go), [backend/service/exam_rules_test.go](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/backend/service/exam_rules_test.go), [backend/service/finance_rules_test.go](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/backend/service/finance_rules_test.go), [backend/utils/errors_test.go](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/backend/utils/errors_test.go)).
+  - Strict validation tests: 2–3 students per group, advisor quota limits (`assigned < quota`), category eligibility, Multimedia department cap (max 12), advisor-examiner conflict-of-interest prevention, and committee honorarium rates (60k/50k/10k LAK).
+  - Backend CI: `go test -v ./...` passes 100% with 0 failures; `go build ./...` compiles cleanly.
+- [x] **`btms_frontend_workflow_agent`**:
+  - Direct workflow integration between `/finance` (Fee Verification & Slip Inspection) and `/disbursement` (4-Round Committee Honorariums & BCEL Vouchers).
+  - Student Profile modal in User Administration (`/users`), seamless navigation across all 8 portals in [AppShell](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/frontend/src/components/layout/app-shell.tsx).
+  - Zero-warning production build: `npm run build` exits with code 0 across all 15 static/dynamic routes.
+- [x] **`btms_report_ui_craft_agent`**:
+  - Official Lao printable reports ([official-thesis-report.tsx](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/frontend/src/components/reports/official-thesis-report.tsx), [official-exam-schedule-report.tsx](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/frontend/src/components/reports/official-exam-schedule-report.tsx), [official-score-paper-report.tsx](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/frontend/src/components/reports/official-score-paper-report.tsx)) with font fallbacks (`Noto Sans Lao`, `Noto Serif Lao`, `Sarabun`) and print stylesheets.
+- [x] **`btms_qa_doc_reviewer`**:
+  - Synchronized CI workflow Go version to `1.25.x` in [.github/workflows/ci.yml](file:///c:/Users/ASUS/OneDrive/เอกสาร/BTMS/.github/workflows/ci.yml).
+  - Audited all 18-stage academic timeline milestones and updated progress tracking documentation.
 
 ---
 

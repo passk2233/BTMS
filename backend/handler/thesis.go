@@ -229,3 +229,27 @@ func (h *ThesisHandler) transitionTo(c *gin.Context, targetStatus string) {
 
 	c.JSON(http.StatusOK, thesis)
 }
+
+// ListCategories returns all official thesis categories with caps.
+//
+//	GET /api/theses/categories
+func (h *ThesisHandler) ListCategories(c *gin.Context) {
+	categories, err := h.svc.ListCategories(c.Request.Context())
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": categories})
+}
+
+// ListStages returns the official 18 academic stages.
+//
+//	GET /api/theses/stages
+func (h *ThesisHandler) ListStages(c *gin.Context) {
+	stages, err := h.svc.ListAcademicStages(c.Request.Context())
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": stages})
+}

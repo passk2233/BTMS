@@ -49,6 +49,9 @@ type TeacherListItem struct {
 	DisplayName    *string `json:"display_name"`
 	Department     string  `json:"department"`
 	Faculty        string  `json:"faculty"`
+	Affiliation    string  `json:"affiliation"`
+	Quota          int     `json:"quota"`
+	AvailableQuota int     `json:"available_quota"`
 	AdvisingCount  int     `json:"advising_count"`
 	CommitteeCount int     `json:"committee_count"`
 	CreatedAt      string  `json:"created_at"`
@@ -61,6 +64,8 @@ type TeacherDetail struct {
 	AcademicTitle string  `json:"academic_title"`
 	Department    string  `json:"department"`
 	Faculty       string  `json:"faculty"`
+	Affiliation   string  `json:"affiliation"`
+	Quota         int     `json:"quota"`
 	CreatedAt     string  `json:"created_at"`
 	UpdatedAt     string  `json:"updated_at"`
 }
@@ -242,6 +247,12 @@ func (s *AcademicService) ListTeachers(ctx context.Context) ([]TeacherListItem, 
 
 	items := make([]TeacherListItem, len(rows))
 	for i, r := range rows {
+		quota := int(r.Quota)
+		advising := int(r.AdvisingCount)
+		avail := quota - advising
+		if avail < 0 {
+			avail = 0
+		}
 		items[i] = TeacherListItem{
 			ID:             formatUUID(r.ID),
 			ProfileID:      formatUUID(r.ProfileID),
@@ -249,7 +260,10 @@ func (s *AcademicService) ListTeachers(ctx context.Context) ([]TeacherListItem, 
 			DisplayName:    textToPtr(r.DisplayName),
 			Department:     r.Department,
 			Faculty:        r.Faculty,
-			AdvisingCount:  int(r.AdvisingCount),
+			Affiliation:    r.Affiliation,
+			Quota:          quota,
+			AvailableQuota: avail,
+			AdvisingCount:  advising,
 			CommitteeCount: int(r.CommitteeCount),
 			CreatedAt:      formatTimestamp(r.CreatedAt),
 			UpdatedAt:      formatTimestamp(r.UpdatedAt),
@@ -279,15 +293,23 @@ func (s *AcademicService) GetTeacher(ctx context.Context, id string) (*TeacherDe
 		AcademicTitle: tc.AcademicTitle,
 		Department:    tc.Department,
 		Faculty:       tc.Faculty,
+		Affiliation:   tc.Affiliation,
+		Quota:         int(tc.Quota),
 		CreatedAt:     formatTimestamp(tc.CreatedAt),
 		UpdatedAt:     formatTimestamp(tc.UpdatedAt),
 	}, nil
 }
 
-func (s *AcademicService) CreateTeacher(ctx context.Context, profileID, academicTitle, department, faculty string) (*TeacherDetail, error) {
+func (s *AcademicService) CreateTeacher(ctx context.Context, profileID, academicTitle, department, faculty, affiliation string, quota int32) (*TeacherDetail, error) {
 	pUID, err := parseUUID(profileID)
 	if err != nil {
 		return nil, utils.BadRequest("Invalid profile ID.")
+	}
+	if quota <= 0 {
+		quota = 5
+	}
+	if affiliation == "" {
+		affiliation = "CEIT"
 	}
 
 	tc, err := s.queries.CreateTeacher(ctx, sqlc.CreateTeacherParams{
@@ -295,6 +317,8 @@ func (s *AcademicService) CreateTeacher(ctx context.Context, profileID, academic
 		AcademicTitle: academicTitle,
 		Department:    department,
 		Faculty:       faculty,
+		Column5:       affiliation,
+		Column6:       quota,
 	})
 	if err != nil {
 		return nil, utils.Internal(err)
@@ -306,12 +330,14 @@ func (s *AcademicService) CreateTeacher(ctx context.Context, profileID, academic
 		AcademicTitle: tc.AcademicTitle,
 		Department:    tc.Department,
 		Faculty:       tc.Faculty,
+		Affiliation:   tc.Affiliation,
+		Quota:         int(tc.Quota),
 		CreatedAt:     formatTimestamp(tc.CreatedAt),
 		UpdatedAt:     formatTimestamp(tc.UpdatedAt),
 	}, nil
 }
 
-func (s *AcademicService) UpdateTeacher(ctx context.Context, id, academicTitle, department, faculty string) (*TeacherDetail, error) {
+func (s *AcademicService) UpdateTeacher(ctx context.Context, id, academicTitle, department, faculty, affiliation string, quota int32) (*TeacherDetail, error) {
 	uid, err := parseUUID(id)
 	if err != nil {
 		return nil, utils.BadRequest("Invalid teacher ID.")
@@ -322,6 +348,8 @@ func (s *AcademicService) UpdateTeacher(ctx context.Context, id, academicTitle, 
 		AcademicTitle: academicTitle,
 		Department:    department,
 		Faculty:       faculty,
+		Column5:       affiliation,
+		Column6:       quota,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -336,6 +364,8 @@ func (s *AcademicService) UpdateTeacher(ctx context.Context, id, academicTitle, 
 		AcademicTitle: tc.AcademicTitle,
 		Department:    tc.Department,
 		Faculty:       tc.Faculty,
+		Affiliation:   tc.Affiliation,
+		Quota:         int(tc.Quota),
 		CreatedAt:     formatTimestamp(tc.CreatedAt),
 		UpdatedAt:     formatTimestamp(tc.UpdatedAt),
 	}, nil

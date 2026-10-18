@@ -13,6 +13,8 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-https://ljpmspnzzsfocdrvnqkj.supabase.co}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqcG1zcG56enNmb2NkcnZucWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1OTQzMjIsImV4cCI6MjEwNjE3MDMyMn0.pxMO40KjCGBDkJCNfJQvrP52JQy3jsz9mUNvx5tCeiA}
     env_file:
       - ./frontend/.env.local
     ports:

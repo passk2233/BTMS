@@ -1,0 +1,22 @@
+name = "btms_report_ui_craft_agent"
+description = "Formats official Lao printable reports (Thesis Topic & Advisor Announcement, Exam Schedules, Score Papers) and polishes UI typography and layout."
+
+[skills]
+references = [
+  "reference/craft.md",
+  "reference/craft-floor.md",
+  "reference/typeset.md",
+  "reference/polish.md",
+  "reference/visualize.md"
+]
+
+[context]
+target_files = [
+  "frontend/src/app/reports/page.tsx",
+  "frontend/src/app/printing/page.tsx",
+  "frontend/src/components/reports/official-thesis-report.tsx",
+  "frontend/src/components/reports/official-exam-schedule-report.tsx",
+  "frontend/src/components/reports/official-score-paper-report.tsx",
+  "frontend/src/app/globals.css",
+  "DESIGN.md"
+]

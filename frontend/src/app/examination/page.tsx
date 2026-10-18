@@ -1,40 +1,39 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  CalendarCheck,
   Clock,
   MapPin,
   Users,
   Award,
   Sliders,
   CheckCircle,
-  AlertCircle,
   XCircle,
-  FileText,
   Search,
-  ChevronRight,
   ShieldAlert,
   Printer,
   Sparkles,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge, BadgeVariant } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { OfficialExamScheduleReport, ExamDaySchedule } from "@/components/reports/official-exam-schedule-report";
+import { OfficialExamScheduleReport, ExamDaySchedule, ScheduleItem } from "@/components/reports/official-exam-schedule-report";
 import { OfficialScorePaperReport, OfficialScorePaperData } from "@/components/reports/official-score-paper-report";
 import { GenerateScheduleModal } from "@/components/examination/generate-schedule-modal";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { studentSearchableOptions, committeeSearchableOptions } from "@/lib/academic-directory";
+import { createClient } from "@/lib/supabase/client";
 
 interface ExamSchedule {
   id: string;
   code: string;
   thesisCode: string;
   thesisTitle: string;
-  category: "DATABASE" | "IOT" | "NETWORK" | "MEDIA";
+  category: "Software" | "Network/Server" | "Cybersecurity" | "Hardware (IoT, Robot)" | "Multimedia" | "DATABASE" | "IOT" | "NETWORK" | "MEDIA";
+  examRound: "PROPOSAL_1" | "PROPOSAL_2" | "FINAL_1" | "FINAL_2";
   roundNumber: number;
   attemptNo: number;
   type: "ສອບປ້ອງກັນໂຄງຮ່າງ" | "ສອບປ້ອງກັນບົດຈົບຊັ້ນ";
@@ -49,225 +48,28 @@ interface ExamSchedule {
   candidateName: string;
 }
 
-const sampleScheduleData: ExamDaySchedule = {
-  dayTitle: "ວັນພຸດ ວັນທີ 15 ກໍລະກົດ 2026",
-  room: "ຫ້ອງສອບເສັງ Conference",
-  deputyHeadName: "ຮສ. ແສງລັດສະໝີ ຈັນທະມິນາວົງ",
+const defaultScheduleData: ExamDaySchedule = {
+  dayTitle: "ວັນພຸດ ວັນທີ 24 ກຸມພາ 2027",
+  room: "ຫ້ອງສອບເສັງ Conference Room 1",
+  deputyHeadName: "ທ່ານ ຮສ. ແສງລັດສະໝີ ຈັນທະມິນາວົງ",
   morningCommittees: {
     chairman: "ທ່ານ ຮສ. ແສງລັດສະໝີ ຈັນທະມິນາວົງ",
-    members: ["ທ່ານ ອຈ. ມະກະລອນ ບຸນທັນ", "ທ່ານ ນາງ ລັດຕິກາ ຄົມສອນລະສິນ"],
+    members: ["ທ່ານ ອຈ. ເມກຈອນ ບຸນທັນ", "ທ່ານ ປອ. ໄຊທະວີ ຫຼວງວິໄລ"],
   },
   afternoonCommittees: {
     chairman: "ທ່ານ ຮສ. ແສງລັດສະໝີ ຈັນທະມິນາວົງ",
-    members: ["ທ່ານ ຮສ. ປອ. ຄຳເພັດ ບຸນນະວົງ", "ທ່ານ ສຸກສະຫວັນ ຈຸນທະລີ"],
+    members: ["ທ່ານ ຮສ. ປອ. ຄຳເພັດ ບຸນນະດີ", "ທ່ານ ສຸກສະຫວັນ ຈຸນດາລີ"],
   },
-  morningSlots: [
-    {
-      groupNo: 1,
-      timeSlot: "8:30 - 9:05 am",
-      classroom: "2IT-CON",
-      topicTitle: "ລະບົບຈັດການເອກະສານຂອງສາຍການບິນລາວ",
-      advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-      members: [
-        { index: 1, name: "ແຮັກເຕ້ ແສງສະຫວ່າງ" },
-        { index: 2, name: "ບຸນທະວີ ວໍລະລາດ" },
-        { index: 3, name: "ສົມພົງ ສີສຸລາດ" },
-      ],
-    },
-    {
-      groupNo: 7,
-      timeSlot: "9:10 - 9:45 am",
-      classroom: "4IT2",
-      topicTitle: "ການພັດທະນາລະບົບຖາມ-ຕອບອັດຕະໂນມັດ ສຳລັບພາກວິຊາວິສະວະກຳຄອມພິວເຕີ ແລະ ເຕັກໂນໂລຊີຂໍ້ມູນຂ່າວສານ ໂດຍນຳໃຊ້ເຕັກນິກ RAG",
-      advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-      members: [
-        { index: 1, name: "ທ້າວ ບຸນມີ ບຸນທະວອນ" },
-        { index: 2, name: "ນາງ ອາລຸນນາ ທັນລະສິນ" },
-        { index: 3, name: "ທ້າວ ເກ້ ຄີ" },
-      ],
-    },
-    {
-      groupNo: 4,
-      timeSlot: "9:50 - 10:25 am",
-      classroom: "4IT3",
-      topicTitle: "ລະບົບຈັດການການໃຊ້ໄຟຟ້າໃນຫ້ອງແຖວ (ກໍລະນີສຶກສາ)",
-      advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-      members: [
-        { index: 1, name: "ນາງ ພອຍໄພລິນ ໄຊຍະລາດ" },
-        { index: 2, name: "ທ້າວ ກໍດຳ ອິນທະໂສມ" },
-        { index: 3, name: "ທ້າວ ໄນຮ່ອນ ພະມີໄຊ" },
-      ],
-    },
-    {
-      groupNo: 56,
-      timeSlot: "10:30 - 11:05 am",
-      classroom: "4Com2",
-      topicTitle: "ການພັດທະນາລະບົບ White-box Pentesting ອັດຕະໂນມັດດ້ວຍ Local AI: ກໍລະນີສຶກສາ ລະບົບ AMS ພາກວິຊາ CEIT",
-      advisor: "ທ່ານ ປອ. ຊານຸພາບ ພົມແກ້ວມາ",
-      members: [
-        { index: 1, name: "ທ້າວ ເດັກກີລານ ລາດສະຫວາດ" },
-        { index: 2, name: "ທ້າວ ອົງກອນ ພູມມິທາ" },
-        { index: 3, name: "ທ້າວ ພິລະສຸກ ແກ້ວບຸນມາ" },
-      ],
-    },
-    {
-      groupNo: 25,
-      timeSlot: "11:10 - 11:45 am",
-      classroom: "2IT_CON",
-      topicTitle: "ລະບົບຄຸ້ມຄອງຫ້ອງແຖວຕ່າງໆ",
-      advisor: "ທ່ານ ຮສ. ປອ. ຄຳເພັດ ບຸນນະວົງ",
-      members: [
-        { index: 1, name: "ຄັນໄຊ ມະນີວົງ" },
-        { index: 2, name: "ບຸນມີ ພົມມະຈັນ" },
-        { index: 3, name: "ດວງຕາ ຄຳຈັນເພັງ" },
-      ],
-    },
-  ],
-  afternoonSlots: [
-    {
-      groupNo: 32,
-      timeSlot: "13:00 - 13:35 pm",
-      classroom: "4Com2",
-      topicTitle: "ຫົວຂໍ້: ລະບົບຄຸ້ມຄອງຕິດຕາມການສອບ-ການສອນຂອງອາຈານປະຈຳພາກວິຊາວິສະວະກຳຄອມພິວເຕີ ແລະ ເຕັກໂນໂລຊີຂໍ້ມູນຂ່າວສານ",
-      advisor: "ທ່ານ ອຈ. ເມກະລອນ ບຸນທັນ",
-      members: [
-        { index: 1, name: "ນາງ ແບບນາລີ ວົງພະຈັນ" },
-        { index: 2, name: "ນາງ ພູກທິບຍາດ ອານຸວົງສີຣິວົງ" },
-        { index: 3, name: "ທ້າວ ສຸພາໄຊ ສຸບານາວົງ" },
-      ],
-    },
-    {
-      groupNo: 39,
-      timeSlot: "13:40 - 14:15 pm",
-      classroom: "2IT-CON",
-      topicTitle: "ລະບົບອອກເອກະສານໃຫ້ນັກສຶກສາໂທຕ່າງປະເທດ",
-      advisor: "ທ່ານ ປອ. ພອນໄຊ ສີລະກອນ",
-      members: [
-        { index: 1, name: "ຄຳຫຼວງ ວັນນະວົງ" },
-        { index: 2, name: "ວິລະສອນ ສີຫາລາດ" },
-        { index: 3, name: "ພອນສະຫວັນ ວາງເຢັນ" },
-      ],
-    },
-    {
-      groupNo: 5,
-      timeSlot: "14:20 - 14:55 pm",
-      classroom: "4Com3",
-      topicTitle: "ລະບົບຈັດການຂໍ້ມູນບໍລິການເຊົ່າລົດຈັກ-ລົດຖີບ",
-      advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-      members: [
-        { index: 1, name: "ທ້າວ ຫຼ້າແກ້ວ ແສງວາລຸນ" },
-        { index: 2, name: "ນາງ ທິບພະຈັນ ທຳມະວົງ" },
-        { index: 3, name: "ນາງ ວົງມະນີ ລາບບັນດິດ" },
-      ],
-    },
-    {
-      groupNo: 20,
-      timeSlot: "15:00 - 15:35 pm",
-      classroom: "2IT-CON",
-      topicTitle: "ເວັບໄຊສັ່ງອາຫານຜ່ານ QR code ຂອງຮ້ານອາຫານໂຄກແຟ",
-      advisor: "ທ່ານ ປອ. ສົມພອນ ກັນທະວົງ",
-      members: [
-        { index: 1, name: "ມັກທະພອນ ສຸຣິພັນ" },
-        { index: 2, name: "ແສງມະຈັນ ອິນດາວົງ" },
-      ],
-    },
-    {
-      groupNo: 52,
-      timeSlot: "15:40 - 16:15 pm",
-      classroom: "4IT3",
-      topicTitle: "ລະບົບຈັດການຮ້ານຂາຍແຜ່ນແພ",
-      advisor: "ທ່ານ ປອ. ພອນໄຊ ສີລະກອນ",
-      members: [
-        { index: 1, name: "ພອນສັກດາ ແກ້ວມະນີ" },
-        { index: 2, name: "ທ້າວ ພຸດທະວາງ ແສນມະນີວົງ" },
-        { index: 3, name: "ທ້າວ ສົມພະວັງ ແກ້ວພັນທະນາ" },
-      ],
-    },
-  ],
+  morningSlots: [],
+  afternoonSlots: [],
 };
 
-const mockExams: ExamSchedule[] = [
-  {
-    id: "EX-2026-001",
-    code: "EX-001",
-    thesisCode: "CS-2026-001",
-    thesisTitle: "ລະບົບກວດຈັບຮອຍຮົ່ວທໍ່ສົ່ງອາຍແກັສດ້ວຍໂດຣນອັດຕະໂນມັດ ແລະ ເຊັນເຊີຫຼາຍໂໝດ",
-    category: "IOT",
-    roundNumber: 1,
-    attemptNo: 1,
-    type: "ສອບປ້ອງກັນໂຄງຮ່າງ",
-    date: "15 ຕຸລາ 2026",
-    time: "10:00 - 11:30 ໂມງເຊົ້າ",
-    room: "ຫ້ອງທົດລອງວິສະວະກຳ 402",
-    chairman: "ຮສ. ດຣ. ສົມຊາຍ ປະເສີດ",
-    members: ["ດຣ. ມາລີ ແກ້ວມະນີ", "ອຈ. ດຣ. ນິລັນ ວົງສຸວັນ"],
-    status: "SCHEDULED",
-    statusLabel: "ກຳນົດສອບແລ້ວ",
-    badgeVariant: "sky",
-    candidateName: "ອາລຸນ ເຊັນ (65010042) + 2 ສະມາຊິກ",
-  },
-  {
-    id: "EX-2026-002",
-    code: "EX-002",
-    thesisCode: "CS-2026-002",
-    thesisTitle: "ການຈຳແນກອາລົມຈາກສັນຍານຄື້ນສະໝອງ EEG ດ້ວຍໂຄງສ້າງ Deep Learning ແບບປະສົມ",
-    category: "MEDIA",
-    roundNumber: 1,
-    attemptNo: 1,
-    type: "ສອບປ້ອງກັນໂຄງຮ່າງ",
-    date: "16 ຕຸລາ 2026",
-    time: "01:30 - 03:00 ໂມງແລງ",
-    room: "ຫ້ອງປະຊຸມໃຫຍ່ B",
-    chairman: "ດຣ. ປະເສີດ ຈັນທະລັງສີ",
-    members: ["ດຣ. ມາລີ ແກ້ວມະນີ", "ດຣ. ອະພິຮັກ ສິຣິພອນ"],
-    status: "IN_PROGRESS",
-    statusLabel: "ກຳລັງສອບເສັງ",
-    badgeVariant: "violet",
-    candidateName: "ນິລັນ ເດຊາ (65010190)",
-  },
-  {
-    id: "EX-2026-003",
-    code: "EX-003",
-    thesisCode: "CS-2025-089",
-    thesisTitle: "ລະບົບບັນຊີແຈກຢາຍແບບກະຈາຍສູນສຳລັບສິນຊັບດິຈິຕອນສະຖາບັນ",
-    category: "DATABASE",
-    roundNumber: 2,
-    attemptNo: 2,
-    type: "ສອບປ້ອງກັນບົດຈົບຊັ້ນ",
-    date: "20 ຕຸລາ 2026",
-    time: "09:00 - 11:00 ໂມງເຊົ້າ",
-    room: "ຫ້ອງສອບເສັງອອນລາຍ 01",
-    chairman: "ສຈ. ດຣ. ກິດຕິສັກ ໄຊຍະວົງ",
-    members: ["ດຣ. ສົມຊາຍ ປະເສີດ", "ດຣ. ວະລຸນີ ສຸວັນນະສີ"],
-    status: "SCHEDULED",
-    statusLabel: "ສອບຄືນ (Attempt 2)",
-    badgeVariant: "amber",
-    candidateName: "ທະນັດ ລັດຕະນະພົງ (64010502)",
-  },
-  {
-    id: "EX-2026-004",
-    code: "EX-004",
-    thesisCode: "CS-2026-015",
-    thesisTitle: "ລະບົບປ້ອງກັນການບຸກລຸກເຄືອຂ່າຍ Zero-Trust SD-WAN",
-    category: "NETWORK",
-    roundNumber: 1,
-    attemptNo: 1,
-    type: "ສອບປ້ອງກັນບົດຈົບຊັ້ນ",
-    date: "21 ຕຸລາ 2026",
-    time: "13:30 - 15:00 ໂມງແລງ",
-    room: "ຫ້ອງ Network Lab 301",
-    chairman: "ຮສ. ແສງລັດສະໝີ ຈັນທະມິນາວົງ",
-    members: ["ທ່ານ ອຈ. ມະກະລອນ ບຸນທັນ", "ທ່ານ ສຸກສະຫວັນ ຈຸນທະລີ"],
-    status: "SCHEDULED",
-    statusLabel: "ກຳນົດສອບແລ້ວ",
-    badgeVariant: "sky",
-    candidateName: "ບຸນມີ ບຸນທະວອນ (65010211) + 2 ສະມາຊິກ",
-  },
-];
-
 export default function ExaminationHubPage() {
+  const [exams, setExams] = useState<ExamSchedule[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedExam, setSelectedExam] = useState<ExamSchedule | null>(null);
   const [filterType, setFilterType] = useState("ALL");
+  const [roundFilter, setRoundFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [committeeFilter, setCommitteeFilter] = useState("");
@@ -275,17 +77,182 @@ export default function ExaminationHubPage() {
   const [selectedCandidateName, setSelectedCandidateName] = useState("");
   const [committeeDecision, setCommitteeDecision] = useState<"PASS" | "FAIL">("PASS");
 
+  // Load real examination data from Supabase PostgreSQL
+  useEffect(() => {
+    async function loadRealExams() {
+      setLoading(true);
+      try {
+        const supabase = createClient();
+        const { data, error } = await (supabase as any)
+          .from("exams")
+          .select(`
+            id,
+            scheduled_date,
+            start_time,
+            end_time,
+            status,
+            room:exam_rooms (name),
+            thesis:theses (
+              id,
+              code,
+              topic_th,
+              topic_en,
+              title_lo,
+              title_en,
+              category_code,
+              members:thesis_members (
+                id,
+                student:students (
+                  student_code,
+                  profile:profiles (display_name)
+                )
+              ),
+              advisors:thesis_advisors (
+                is_primary,
+                teacher:teachers (
+                  academic_title,
+                  profile:profiles (display_name)
+                )
+              )
+            ),
+            round:exam_rounds (
+              id,
+              period,
+              round_no,
+              name
+            ),
+            committees:exam_committees (
+              role,
+              teacher:teachers (
+                academic_title,
+                profile:profiles (display_name)
+              )
+            )
+          `);
+
+        if (error) {
+          console.error("Error loading exams from Supabase:", error);
+        }
+
+        if (data && data.length > 0) {
+          const mapped: ExamSchedule[] = data.map((d: any, index: number) => {
+            const chairmanObj = d.committees?.find((c: any) => c.role === "CHAIRMAN");
+            const membersObj = d.committees?.filter((c: any) => c.role !== "CHAIRMAN") || [];
+            const chairmanName = chairmanObj
+              ? `${chairmanObj.teacher?.academic_title || ""} ${chairmanObj.teacher?.profile?.display_name || ""}`.trim()
+              : "ທ່ານ ຮສ. ແສງລັດສະໝີ ຈັນທະມິນາວົງ";
+            const memberNames = membersObj.map(
+              (m: any) => `${m.teacher?.academic_title || ""} ${m.teacher?.profile?.display_name || ""}`.trim()
+            );
+            const isProposal = d.round?.period === "PROPOSAL";
+            const roundLabel = `${d.round?.period || "PROPOSAL"}_${d.round?.round_no || 1}` as any;
+            return {
+              id: d.id,
+              code: `EX-${String(index + 1).padStart(3, "0")}`,
+              thesisCode: d.thesis?.code || `CS-2027-${String(index + 1).padStart(3, "0")}`,
+              thesisTitle: d.thesis?.title_lo || d.thesis?.topic_th || d.thesis?.title_en || d.thesis?.topic_en || "ຫົວບົດວິທະຍານິພົນ",
+              category: d.thesis?.category_code || "Software",
+              examRound: roundLabel,
+              roundNumber: d.round?.round_no || 1,
+              attemptNo: d.attempt_no || 1,
+              type: isProposal ? "ສອບປ້ອງກັນໂຄງຮ່າງ" : "ສອບປ້ອງກັນບົດຈົບຊັ້ນ",
+              date: d.scheduled_date || "ກຳນົດພາຍຫຼັງ",
+              time: d.start_time && d.end_time ? `${d.start_time} - ${d.end_time}` : (d.scheduled_time || "08:30 - 10:00"),
+              room: d.room?.name || d.room_name || "ຫ້ອງສອບເສັງ Conference Room",
+              chairman: chairmanName,
+              members: memberNames.length > 0 ? memberNames : ["ທ່ານ ອຈ. ເມກຈອນ ບຸນທັນ", "ທ່ານ ປອ. ໄຊທະວີ ຫຼວງວິໄລ"],
+              status: (d.status as any) || "SCHEDULED",
+              statusLabel: d.status === "COMPLETED" ? "ສອບເສັງແລ້ວ" : d.status === "IN_PROGRESS" ? "ກຳລັງສອບເສັງ" : "ກຳນົດສອບແລ້ວ",
+              badgeVariant: d.status === "COMPLETED" ? "emerald" : d.status === "IN_PROGRESS" ? "violet" : "sky",
+              candidateName: "ນັກສຶກສາກຸ່ມບົດໂຄງການ",
+            };
+          });
+          setExams(mapped);
+
+          // Populate live schedule report data from real database rows
+          const realSlots: ScheduleItem[] = (data || []).map((d: any, idx: number) => {
+            const advisorObj = d.thesis?.advisors?.find((a: any) => a.is_primary) || d.thesis?.advisors?.[0];
+            const advName = advisorObj
+              ? `${advisorObj.teacher?.academic_title || ""} ${advisorObj.teacher?.profile?.display_name || ""}`.trim()
+              : "ທ່ານ ຮສ. ທາ ບຸນທັນ";
+            const members = (d.thesis?.members || []).map((m: any, mIdx: number) => ({
+              index: mIdx + 1,
+              name: m.student?.profile?.display_name || `ນັກສຶກສາ ${mIdx + 1}`,
+            }));
+            return {
+              groupNo: idx + 1,
+              timeSlot: d.scheduled_time || "8:30 - 9:05 am",
+              classroom: d.room_name || "4IT1",
+              topicTitle: d.thesis?.title_lo || d.thesis?.title_en || "ຫົວບົດວິທະຍານິພົນ",
+              advisor: advName,
+              members: members.length > 0 ? members : [{ index: 1, name: "ນັກສຶກສາປະຈຳກຸ່ມ" }],
+            };
+          });
+
+          const mSlots = realSlots.slice(0, Math.ceil(realSlots.length / 2));
+          const aSlots = realSlots.slice(Math.ceil(realSlots.length / 2));
+
+          setCurrentSchedule({
+            dayTitle: data?.[0]?.scheduled_date ? `ວັນທີ ${data[0].scheduled_date}` : "ວັນພຸດ ວັນທີ 24 ກຸມພາ 2027",
+            room: data?.[0]?.room?.name || data?.[0]?.room_name || "ຫ້ອງສອບເສັງ Conference Room 1",
+            deputyHeadName: "ທ່ານ ຮສ. ແສງລັດສະໝີ ຈັນທະມິນາວົງ",
+            morningCommittees: {
+              chairman: "ທ່ານ ຮສ. ແສງລັດສະໝີ ຈັນທະມິນາວົງ",
+              members: ["ທ່ານ ອຈ. ເມກຈອນ ບຸນທັນ", "ທ່ານ ປອ. ໄຊທະວີ ຫຼວງວິໄລ"],
+            },
+            afternoonCommittees: {
+              chairman: "ທ່ານ ຮສ. ແສງລັດສະໝີ ຈັນທະມິນາວົງ",
+              members: ["ທ່ານ ຮສ. ປອ. ຄຳເພັດ ບຸນນະດີ", "ທ່ານ ສຸກສະຫວັນ ຈຸນດາລີ"],
+            },
+            morningSlots: mSlots,
+            afternoonSlots: aSlots,
+          });
+        } else {
+          setExams([]);
+        }
+      } catch (err) {
+        console.error("Error loading exams from Supabase:", err);
+        setExams([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadRealExams();
+  }, []);
+
   // Modals for printable reports & generator
-  const [currentSchedule, setCurrentSchedule] = useState<ExamDaySchedule>(sampleScheduleData);
+  const [currentSchedule, setCurrentSchedule] = useState<ExamDaySchedule>(defaultScheduleData);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showGenerateScheduleModal, setShowGenerateScheduleModal] = useState(false);
   const [scheduleSuccessMsg, setScheduleSuccessMsg] = useState<string | null>(null);
   const [showScorePaperModal, setShowScorePaperModal] = useState(false);
   const [activeScorePaperData, setActiveScorePaperData] = useState<OfficialScorePaperData | null>(null);
 
-  const handleSaveGeneratedSchedule = (newSchedule: ExamDaySchedule) => {
+  const handleSaveGeneratedSchedule = (newSchedule: any) => {
     setCurrentSchedule(newSchedule);
     setShowGenerateScheduleModal(false);
+    const scheduleExams = newSchedule.exams || [];
+    const generated: ExamSchedule[] = scheduleExams.map((e: any, idx: number) => ({
+      id: `EX-2027-${String(idx + 1).padStart(3, "0")}`,
+      code: `EX-${String(idx + 1).padStart(3, "0")}`,
+      thesisCode: e.thesisCode || `CS-2027-${String(idx + 1).padStart(3, "0")}`,
+      thesisTitle: e.topicTitle || "ຫົວບົດວິທະຍານິພົນ",
+      category: (e.category || "Software") as any,
+      examRound: "PROPOSAL_1",
+      roundNumber: 1,
+      attemptNo: 1,
+      type: "ສອບປ້ອງກັນໂຄງຮ່າງ",
+      date: newSchedule.dateLao || newSchedule.dayTitle || "15 ກໍລະກົດ 2026",
+      time: `${e.startTime || "09:00"} - ${e.endTime || "09:45"}`,
+      room: e.room || "ຫ້ອງສອບເສັງ 4IT3",
+      chairman: e.chairman || "ທ່ານ ຮສ. ປອ. ບຸນທັນ",
+      members: [e.committee1 || "ທ່ານ ປອ. ໄຊທະວີ", e.committee2 || "ທ່ານ ອຈ. ເມກຈອນ"],
+      status: "SCHEDULED",
+      statusLabel: "ກຳນົດສອບແລ້ວ (Proposal Round 1)",
+      badgeVariant: "sky",
+      candidateName: Array.isArray(e.studentNames) ? e.studentNames.join(", ") : (e.candidateName || ""),
+    }));
+    setExams(generated);
     setScheduleSuccessMsg("ສ້າງ ແລະ ອັບເດດຕາຕະລາງສອບເສັງສຳເລັດແລ້ວ! ພ້ອມພິມແບບຟອມ A4 Landscape.");
     setTimeout(() => setScheduleSuccessMsg(null), 4000);
   };
@@ -318,19 +285,20 @@ export default function ExaminationHubPage() {
 
   const scaledScore100 = (rawScore60 / 60) * 100;
 
-  const filteredExams = mockExams.filter((e) => {
+  const filteredExams = exams.filter((e) => {
     const matchesSearch =
       e.thesisTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.thesisCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.candidateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.room.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === "ALL" || e.type === filterType;
+    const matchesRound = roundFilter === "ALL" || e.examRound === roundFilter;
     const matchesCategory = categoryFilter === "ALL" || e.category === categoryFilter;
     const matchesCommittee =
       !committeeFilter ||
       e.chairman.toLowerCase().includes(committeeFilter.toLowerCase()) ||
       e.members.some((m) => m.toLowerCase().includes(committeeFilter.toLowerCase()));
-    return matchesSearch && matchesType && matchesCategory && matchesCommittee;
+    return matchesSearch && matchesType && matchesRound && matchesCategory && matchesCommittee;
   });
 
   const handleOpenScorePaper = (exam: ExamSchedule) => {
@@ -343,7 +311,7 @@ export default function ExaminationHubPage() {
       attemptNo: exam.attemptNo,
       examDate: exam.date,
       examRoom: exam.room,
-      academicYear: "2025-2026",
+      academicYear: "2026-2027",
       students: [
         {
           index: 1,
@@ -425,8 +393,9 @@ export default function ExaminationHubPage() {
 
             <Button
               variant="outline"
+              disabled={exams.length === 0}
               onClick={() => {
-                handleOpenScorePaper(mockExams[0]);
+                if (exams.length > 0) handleOpenScorePaper(exams[0]);
               }}
               leftIcon={<Printer className="h-4 w-4 text-violet-600" />}
               className="border-violet-300 text-violet-800 hover:bg-violet-50 font-lao font-semibold"
@@ -435,7 +404,10 @@ export default function ExaminationHubPage() {
             </Button>
 
             <Button
-              onClick={() => handleSelectExamForGrading(mockExams[0])}
+              disabled={exams.length === 0}
+              onClick={() => {
+                if (exams.length > 0) handleSelectExamForGrading(exams[0]);
+              }}
               leftIcon={<Award className="h-4 w-4" />}
               className="font-lao"
             >
@@ -452,68 +424,128 @@ export default function ExaminationHubPage() {
           </div>
         )}
 
+        {/* Committee Fee Rates & Financial Standard Banner */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white p-3.5 rounded-xl shadow-sm text-xs font-lao">
+          <div className="flex items-center gap-2">
+            <span className="h-7 w-7 rounded-lg bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold">1</span>
+            <div>
+              <p className="text-slate-400 text-[11px]">ປະທານກຳມະການ</p>
+              <p className="font-bold text-sky-300">60,000 ກີບ / ກຸ່ມ</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-7 w-7 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold">2</span>
+            <div>
+              <p className="text-slate-400 text-[11px]">ກຳມະການ / ເລຂາ</p>
+              <p className="font-bold text-emerald-300">50,000 ກີບ / ກຸ່ມ / ທ່ານ</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-7 w-7 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold">3</span>
+            <div>
+              <p className="text-slate-400 text-[11px]">ຄ່ານ້ຳດື່ມ & ອາຫານຫວ່າງ</p>
+              <p className="font-bold text-amber-300">10,000 ກີບ / ກຸ່ມ</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-7 w-7 rounded-lg bg-violet-500/20 text-violet-300 flex items-center justify-center font-bold">4</span>
+            <div>
+              <p className="text-slate-400 text-[11px]">ຮອບການສອບເສັງ</p>
+              <p className="font-bold text-violet-300">4 ຮອບ (ໂຄງຮ່າງ 1-2 & ບົດຈົບ 1-2)</p>
+            </div>
+          </div>
+        </div>
+
         {/* Filter Controls with Searchable Dropdown */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
-            <div className="flex items-center gap-2 flex-1 max-w-md bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-              <Search className="h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="ຄົ້ນຫາລະຫັດສອບ, ຫ້ອງສອບເສັງ ຫຼື ຫົວຂໍ້ບົດ..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none w-full"
-              />
+        <div className="flex flex-col gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
+              <div className="flex items-center gap-2 flex-1 max-w-md bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                <Search className="h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="ຄົ້ນຫາລະຫັດສອບ, ຫ້ອງສອບເສັງ ຫຼື ຫົວຂໍ້ບົດ..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none w-full"
+                />
+              </div>
+
+              <div className="w-full sm:w-64">
+                <SearchableSelect
+                  options={committeeSearchableOptions}
+                  value={committeeFilter}
+                  onChange={(val) => setCommitteeFilter(val)}
+                  placeholder="-- ກັ່ນຕອງຕາມກຳມະການ --"
+                  searchPlaceholder="ພິມຊື່ອາຈານກຳມະການ..."
+                  allowCustom={false}
+                />
+              </div>
             </div>
 
-            <div className="w-full sm:w-64">
-              <SearchableSelect
-                options={committeeSearchableOptions}
-                value={committeeFilter}
-                onChange={(val) => setCommitteeFilter(val)}
-                placeholder="-- ກັ່ນຕອງຕາມກຳມະການ --"
-                searchPlaceholder="ພິມຊື່ອາຈານກຳມະການ..."
-                allowCustom={false}
-              />
+            <div className="flex flex-wrap items-center gap-2 text-xs shrink-0 font-lao">
+              <span className="text-slate-500 font-medium">ປະເພດ:</span>
+              {[
+                { id: "ALL", label: "ທັງໝົດ" },
+                { id: "ສອບປ້ອງກັນໂຄງຮ່າງ", label: "ສອບໂຄງຮ່າງ" },
+                { id: "ສອບປ້ອງກັນບົດຈົບຊັ້ນ", label: "ສອບບົດຈົບຊັ້ນ" },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setFilterType(t.id)}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition ${
+                    filterType === t.id
+                      ? "bg-sky-600 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs shrink-0">
-            <span className="text-slate-500 font-medium">ປະເພດການສອບ:</span>
+          {/* Exam Round Selector Row */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs font-lao">
+            <span className="text-slate-500 font-medium">ຮອບການສອບ:</span>
             {[
-              { id: "ALL", label: "ທັງໝົດ" },
-              { id: "ສອບປ້ອງກັນໂຄງຮ່າງ", label: "ສອບໂຄງຮ່າງ" },
-              { id: "ສອບປ້ອງກັນບົດຈົບຊັ້ນ", label: "ສອບບົດຈົບຊັ້ນ" },
-            ].map((t) => (
+              { id: "ALL", label: "ທຸກຮອບ" },
+              { id: "PROPOSAL_1", label: "ປ້ອງກັນຫົວບົດ ຊຸດທີ 1 (ກຸມພາ-ມີນາ 2027)" },
+              { id: "PROPOSAL_2", label: "ປ້ອງກັນຫົວບົດ ຊຸດທີ 2 (ມີນາ 2027)" },
+              { id: "FINAL_1", label: "ປ້ອງກັນບົດຈົບຊັ້ນ ຊຸດທີ 1 (ມິຖຸນາ-ກໍລະກົດ 2027)" },
+              { id: "FINAL_2", label: "ປ້ອງກັນບົດຈົບຊັ້ນ ຊຸດທີ 2 (ກໍລະກົດ 2027)" },
+            ].map((round) => (
               <button
-                key={t.id}
-                onClick={() => setFilterType(t.id)}
-                className={`px-2.5 py-1 rounded-md font-semibold transition ${
-                  filterType === t.id
-                    ? "bg-sky-600 text-white shadow-xs"
+                key={round.id}
+                onClick={() => setRoundFilter(round.id)}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                  roundFilter === round.id
+                    ? "bg-violet-700 text-white shadow-xs"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                {t.label}
+                {round.label}
               </button>
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 text-xs shrink-0 border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0 md:pl-3">
+          {/* 5 Thesis Categories Filter Row */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 text-xs font-lao">
             <span className="text-slate-500 font-medium">ໝວດວິຊາ:</span>
             {[
               { id: "ALL", label: "ທັງໝົດ" },
-              { id: "DATABASE", label: "DATABASE" },
-              { id: "IOT", label: "IOT" },
-              { id: "NETWORK", label: "NETWORK" },
-              { id: "MEDIA", label: "MEDIA" },
+              { id: "Software", label: "Software" },
+              { id: "Network/Server", label: "Network/Server" },
+              { id: "Cybersecurity", label: "Cybersecurity" },
+              { id: "Hardware (IoT, Robot)", label: "Hardware (IoT, Robot)" },
+              { id: "Multimedia", label: "Multimedia" },
             ].map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setCategoryFilter(cat.id)}
                 className={`px-2 py-0.5 rounded text-[11px] font-bold transition ${
                   categoryFilter === cat.id
-                    ? "bg-violet-700 text-white shadow-xs"
+                    ? "bg-emerald-700 text-white shadow-xs"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
@@ -524,79 +556,90 @@ export default function ExaminationHubPage() {
         </div>
 
         {/* Examination Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredExams.map((exam) => (
-            <Card key={exam.id} className="flex flex-col justify-between hover:border-sky-300 transition-all">
-              <div>
-                <CardHeader className="border-b border-slate-100 pb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-xs font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded">
-                        {exam.code}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-slate-200">
+            <Loader2 className="h-8 w-8 animate-spin text-sky-600 mb-2" />
+            <p className="text-sm text-slate-500 font-lao">ກຳລັງໂຫຼດຕາຕະລາງສອບເສັງຈາກ Supabase Database...</p>
+          </div>
+        ) : filteredExams.length === 0 ? (
+          <div className="p-8 text-center bg-white rounded-xl border border-slate-200 font-lao text-slate-500">
+            ບໍ່ພົບຕາຕະລາງສອບເສັງທີ່ກົງກັບເງື່ອນໄຂ
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredExams.map((exam) => (
+              <Card key={exam.id} className="flex flex-col justify-between hover:border-sky-300 transition-all">
+                <div>
+                  <CardHeader className="border-b border-slate-100 pb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded">
+                          {exam.code}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-violet-100 text-violet-800 rounded">
+                          {exam.category}
+                        </span>
+                      </div>
+                      <Badge variant={exam.badgeVariant}>{exam.statusLabel}</Badge>
+                    </div>
+                    <CardTitle className="text-base font-bold mt-2.5 line-clamp-2">
+                      {exam.thesisTitle}
+                    </CardTitle>
+                    <CardDescription className="text-xs text-slate-500 font-medium flex items-center justify-between mt-1">
+                      <span>ນັກສຶກສາ: {exam.candidateName}</span>
+                      <span className="text-[11px] font-semibold text-slate-600">
+                        ຮອບ {exam.roundNumber} ({exam.attemptNo > 1 ? `ສອບຄືນ #${exam.attemptNo}` : "ຄັ້ງທີ 1"})
                       </span>
-                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-violet-100 text-violet-800 rounded">
-                        {exam.category}
+                    </CardDescription>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3 pt-4 text-xs text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-sky-600 shrink-0" />
+                      <span>
+                        {exam.date} • {exam.time}
                       </span>
                     </div>
-                    <Badge variant={exam.badgeVariant}>{exam.statusLabel}</Badge>
-                  </div>
-                  <CardTitle className="text-base font-bold mt-2.5 line-clamp-2">
-                    {exam.thesisTitle}
-                  </CardTitle>
-                  <CardDescription className="text-xs text-slate-500 font-medium flex items-center justify-between mt-1">
-                    <span>ນັກສຶກສາ: {exam.candidateName}</span>
-                    <span className="text-[11px] font-semibold text-slate-600">
-                      ຮອບ {exam.roundNumber} ({exam.attemptNo > 1 ? `ສອບຄືນ #${exam.attemptNo}` : "ຄັ້ງທີ 1"})
-                    </span>
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="space-y-3 pt-4 text-xs text-slate-600">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-sky-600 shrink-0" />
-                    <span>
-                      {exam.date} • {exam.time}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-sky-600 shrink-0" />
-                    <span className="truncate">{exam.room}</span>
-                  </div>
-                  <div className="flex items-start gap-2 pt-2 border-t border-slate-100">
-                    <Users className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-semibold text-slate-700 block">ປະທານກຳມະການ:</span>
-                      <span className="text-slate-500">{exam.chairman}</span>
-                      <span className="font-semibold text-slate-700 block mt-1">ກຳມະການຮ່ວມ:</span>
-                      <span className="text-slate-500">{exam.members.join(", ")}</span>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-sky-600 shrink-0" />
+                      <span className="truncate">{exam.room}</span>
                     </div>
-                  </div>
-                </CardContent>
-              </div>
+                    <div className="flex items-start gap-2 pt-2 border-t border-slate-100">
+                      <Users className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold text-slate-700 block">ປະທານກຳມະການ:</span>
+                        <span className="text-slate-500">{exam.chairman}</span>
+                        <span className="font-semibold text-slate-700 block mt-1">ກຳມະການຮ່ວມ:</span>
+                        <span className="text-slate-500">{exam.members.join(", ")}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </div>
 
-              <CardFooter className="pt-3 border-t border-slate-100 flex gap-2">
-                <Button
-                  onClick={() => handleSelectExamForGrading(exam)}
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 justify-center"
-                  leftIcon={<Sliders className="h-3.5 w-3.5" />}
-                >
-                  ເປີດຕາຕະລາງໃຫ້ຄະແນນ (Rubric)
-                </Button>
-                <Button
-                  onClick={() => handleOpenScorePaper(exam)}
-                  variant="outline"
-                  size="sm"
-                  className="border-violet-200 text-violet-700 hover:bg-violet-50"
-                  title="ພິມໃບຄະແນນ & ຄຳເຫັນ"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+                <CardFooter className="pt-3 border-t border-slate-100 flex gap-2">
+                  <Button
+                    onClick={() => handleSelectExamForGrading(exam)}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 justify-center"
+                    leftIcon={<Sliders className="h-3.5 w-3.5" />}
+                  >
+                    ເປີດຕາຕະລາງໃຫ້ຄະແນນ (Rubric)
+                  </Button>
+                  <Button
+                    onClick={() => handleOpenScorePaper(exam)}
+                    variant="outline"
+                    size="sm"
+                    className="border-violet-200 text-violet-700 hover:bg-violet-50"
+                    title="ພິມໃບຄະແນນ & ຄຳເຫັນ"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Live Evaluation Scoring Room Modal */}
         {selectedExam && (

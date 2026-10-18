@@ -118,6 +118,25 @@ ORDER BY
   CASE ec.role WHEN 'CHAIRMAN' THEN 0 WHEN 'SECRETARY' THEN 2 ELSE 1 END,
   ec.assigned_at;
 
+-- name: ListExamsByRound :many
+SELECT e.*, t.topic_en, t.topic_th, t.category_code
+FROM public.exams e
+JOIN public.theses t ON t.id = e.thesis_id
+WHERE e.round_id = $1
+ORDER BY e.scheduled_date ASC, e.start_time ASC;
+
+-- name: ListExamCommitteesByRound :many
+SELECT ec.id, ec.exam_id, ec.teacher_id, ec.role, ec.assigned_at,
+       t.academic_title, t.department, t.affiliation,
+       p.display_name,
+       e.exam_type_code, e.attempt_no
+FROM public.exam_committees ec
+JOIN public.exams e ON e.id = ec.exam_id
+JOIN public.teachers t ON t.id = ec.teacher_id
+JOIN public.profiles p ON p.id = t.profile_id
+WHERE e.round_id = $1
+ORDER BY ec.exam_id, ec.role DESC;
+
 -- =========================================================================
 -- Evaluation Criteria
 -- =========================================================================
@@ -196,7 +215,7 @@ ORDER BY ec.created_at;
 -- =========================================================================
 
 -- name: ListThesisCategories :many
-SELECT code, name, sort_order, created_at
+SELECT code, name, sort_order, global_cap, created_at
 FROM public.thesis_categories
 ORDER BY sort_order;
 

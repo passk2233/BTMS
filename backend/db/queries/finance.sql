@@ -26,8 +26,8 @@ insert into public.exam_fee_payments (
   recorded_by,
   notes
 ) values (
-  $1, $2, $3, $4, $5, $6, coalesce(nullif($7, ''), 'LAK'),
-  coalesce(nullif($8, ''), 'PAID'), coalesce($9, ''), $10, coalesce($11, '')
+  $1, $2, $3, $4, $5, $6, coalesce(nullif($7::text, ''), 'LAK'),
+  coalesce(nullif($8::text, ''), 'PAID'), coalesce($9::text, ''), $10, coalesce($11::text, '')
 ) returning *;
 
 -- name: LinkExamFeePaymentToExam :one
@@ -62,7 +62,7 @@ select
   r.id as round_id,
   r.academic_year,
   r.period as round_period,
-  r.round_number
+  r.round_no as round_number
 from public.exam_fee_payments p
 inner join public.exams e on p.exam_id = e.id
 inner join public.exam_rounds r on e.round_id = r.id
@@ -108,7 +108,7 @@ insert into public.round_snack_budgets (
   notes,
   set_by
 ) values (
-  $1, $2, coalesce(nullif($3, ''), 'LAK'), coalesce($4, ''), $5
+  $1, $2, coalesce(nullif($3::text, ''), 'LAK'), coalesce($4::text, ''), $5
 )
 on conflict (round_id) do update set
   amount = excluded.amount,
@@ -140,7 +140,7 @@ insert into public.staff_wage_periods (
   period,
   currency
 ) values (
-  $1, $2, coalesce(nullif($3, ''), 'LAK')
+  $1, $2, coalesce(nullif($3::text, ''), 'LAK')
 ) returning *;
 
 -- name: UpdateStaffWagePeriodCalculation :one
@@ -177,7 +177,7 @@ insert into public.staff_wage_assignments (
   duty,
   percent
 ) values (
-  $1, $2, $3, coalesce($4, ''), $5
+  $1, $2, $3, coalesce($4::text, ''), $5
 ) returning *;
 
 -- name: DeleteStaffWageAssignments :exec
@@ -204,7 +204,7 @@ insert into public.payouts (
   notes
 ) values (
   $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-  coalesce(nullif($13, ''), 'LAK'), coalesce(nullif($14, ''), 'PENDING'), $15, coalesce($16, '')
+  coalesce(nullif($13::text, ''), 'LAK'), coalesce(nullif($14::text, ''), 'PENDING'), $15, coalesce($16::text, '')
 ) returning *;
 
 -- name: ListPayoutsByRound :many

@@ -3,17 +3,13 @@
 import React, { useState, useMemo } from "react";
 import {
   Calendar,
-  Clock,
   MapPin,
-  Users,
   UserCheck,
   ShieldAlert,
   ShieldCheck,
   CheckCircle2,
-  AlertTriangle,
   Plus,
   Trash2,
-  ArrowUpDown,
   Sparkles,
   X,
   Shuffle,
@@ -22,7 +18,7 @@ import {
   Coffee,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExamDaySchedule, ScheduleItem } from "@/components/reports/official-exam-schedule-report";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -42,7 +38,7 @@ const candidateGroupsPool: CandidateGroup[] = [
     groupNo: 1,
     classroom: "2IT-CON",
     topicTitle: "ລະບົບຈັດການເອກະສານຂອງສາຍການບິນລາວ",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
+    advisor: "ທ່ານ ຮສ. ທາ ບຸນທັນ",
     members: [
       { index: 1, name: "ແຮັກເຕ້ ແສງສະຫວ່າງ" },
       { index: 2, name: "ບຸນທະວີ ວໍລະລາດ" },
@@ -53,7 +49,7 @@ const candidateGroupsPool: CandidateGroup[] = [
     groupNo: 7,
     classroom: "4IT2",
     topicTitle: "ການພັດທະນາລະບົບຖາມ-ຕອບອັດຕະໂນມັດ ສຳລັບພາກວິຊາ CEIT ໂດຍນຳໃຊ້ເຕັກນິກ RAG",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
+    advisor: "ທ່ານ ຮສ. ທາ ບຸນທັນ",
     members: [
       { index: 1, name: "ທ້າວ ບຸນມີ ບຸນທະວອນ" },
       { index: 2, name: "ນາງ ອາລຸນນາ ທັນລະສິນ" },
@@ -64,7 +60,7 @@ const candidateGroupsPool: CandidateGroup[] = [
     groupNo: 4,
     classroom: "4IT3",
     topicTitle: "ລະບົບຈັດການການໃຊ້ໄຟຟ້າໃນຫ້ອງແຖວ (ກໍລະນີສຶກສາ)",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
+    advisor: "ທ່ານ ຮສ. ທາ ບຸນທັນ",
     members: [
       { index: 1, name: "ນາງ ພອຍໄພລິນ ໄຊຍະລາດ" },
       { index: 2, name: "ທ້າວ ກໍດຳ ອິນທະໂສມ" },
@@ -75,7 +71,7 @@ const candidateGroupsPool: CandidateGroup[] = [
     groupNo: 56,
     classroom: "4Com2",
     topicTitle: "ການພັດທະນາລະບົບ White-box Pentesting ອັດຕະໂນມັດດ້ວຍ Local AI: AMS",
-    advisor: "ທ່ານ ປອ. ຊານຸພາບ ພົມແກ້ວມາ",
+    advisor: "ທ່ານ ປອ. ຊານຸພາບ ພົມແກ້ວນາ",
     members: [
       { index: 1, name: "ທ້າວ ເດັກກີລານ ລາດສະຫວາດ" },
       { index: 2, name: "ທ້າວ ອົງກອນ ພູມມິທາ" },
@@ -86,7 +82,7 @@ const candidateGroupsPool: CandidateGroup[] = [
     groupNo: 25,
     classroom: "2IT_CON",
     topicTitle: "ລະບົບຄຸ້ມຄອງຫ້ອງແຖວຕ່າງໆ",
-    advisor: "ທ່ານ ຮສ. ປອ. ຄຳເພັດ ບຸນນະວົງ",
+    advisor: "ທ່ານ ຮສ. ປອ. ຄຳເພັດ ບຸນນະດີ",
     members: [
       { index: 1, name: "ຄັນໄຊ ມະນີວົງ" },
       { index: 2, name: "ບຸນມີ ພົມມະຈັນ" },
@@ -97,7 +93,7 @@ const candidateGroupsPool: CandidateGroup[] = [
     groupNo: 32,
     classroom: "4Com2",
     topicTitle: "ລະບົບຄຸ້ມຄອງຕິດຕາມການສອບ-ການສອນຂອງອາຈານປະຈຳພາກວິຊາ CEIT",
-    advisor: "ທ່ານ ອຈ. ເມກະລອນ ບຸນທັນ",
+    advisor: "ທ່ານ ອຈ. ເມກຈອນ ບຸນທັນ",
     members: [
       { index: 1, name: "ນາງ ແບບນາລີ ວົງພະຈັນ" },
       { index: 2, name: "ນາງ ພູກທິບຍາດ ອານຸວົງສີຣິວົງ" },
@@ -108,7 +104,7 @@ const candidateGroupsPool: CandidateGroup[] = [
     groupNo: 39,
     classroom: "2IT-CON",
     topicTitle: "ລະບົບອອກເອກະສານໃຫ້ນັກສຶກສາໂທຕ່າງປະເທດ",
-    advisor: "ທ່ານ ປອ. ພອນໄຊ ສີລະກອນ",
+    advisor: "ທ່ານ ອຈ. ປອ. ພອນໄຊ ວິລະກອນ",
     members: [
       { index: 1, name: "ຄຳຫຼວງ ວັນນະວົງ" },
       { index: 2, name: "ວິລະສອນ ສີຫາລາດ" },
@@ -119,7 +115,7 @@ const candidateGroupsPool: CandidateGroup[] = [
     groupNo: 5,
     classroom: "4Com3",
     topicTitle: "ລະບົບຈັດການຂໍ້ມູນບໍລິການເຊົ່າລົດຈັກ-ລົດຖີບ",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
+    advisor: "ທ່ານ ຮສ. ທາ ບຸນທັນ",
     members: [
       { index: 1, name: "ທ້າວ ຫຼ້າແກ້ວ ແສງວາລຸນ" },
       { index: 2, name: "ນາງ ທິບພະຈັນ ທຳມະວົງ" },
@@ -140,7 +136,7 @@ const candidateGroupsPool: CandidateGroup[] = [
     groupNo: 52,
     classroom: "4IT3",
     topicTitle: "ລະບົບຈັດການຮ້ານຂາຍແຜ່ນແພ",
-    advisor: "ທ່ານ ປອ. ພອນໄຊ ສີລະກອນ",
+    advisor: "ທ່ານ ອຈ. ປອ. ພອນໄຊ ວິລະກອນ",
     members: [
       { index: 1, name: "ພອນສັກດາ ແກ້ວມະນີ" },
       { index: 2, name: "ທ້າວ ພຸດທະວາງ ແສນມະນີວົງ" },
@@ -177,12 +173,13 @@ export function GenerateScheduleModal({
   onSaveSchedule,
   onClose,
 }: GenerateScheduleModalProps) {
-  // 1. Exam Date & Location State
-  const [examDate, setExamDate] = useState("2026-07-15");
+  // 1. Exam Date, Round & Location State
+  const [examDate, setExamDate] = useState("2027-02-24");
   const [dayTitleLao, setDayTitleLao] = useState(
-    initialSchedule?.dayTitle || "ວັນພຸດ ວັນທີ 15 ກໍລະກົດ 2026"
+    initialSchedule?.dayTitle || "ວັນພຸດ ວັນທີ 24 ກຸມພາ 2027"
   );
-  const [room, setRoom] = useState(initialSchedule?.room || "ຫ້ອງສອບເສັງ Conference");
+  const [examRound, setExamRound] = useState<string>("PROPOSAL_1");
+  const [room, setRoom] = useState(initialSchedule?.room || "ຫ້ອງສອບເສັງ Conference Room 1");
   const [deputyHeadName, setDeputyHeadName] = useState(
     initialSchedule?.deputyHeadName || "ຮສ. ແສງລັດສະໝີ ຈັນທະມິນາວົງ"
   );
@@ -193,8 +190,8 @@ export function GenerateScheduleModal({
   );
   const [morningMembers, setMorningMembers] = useState<string[]>(
     initialSchedule?.morningCommittees.members || [
-      "ທ່ານ ອຈ. ມະກະລອນ ບຸນທັນ",
-      "ທ່ານ ນາງ ລັດຕິກາ ຄົມສອນລະສິນ",
+      "ທ່ານ ອຈ. ເມກຈອນ ບຸນທັນ",
+      "ທ່ານ ນາງ ລັດທິດາ",
     ]
   );
 
@@ -203,8 +200,8 @@ export function GenerateScheduleModal({
   );
   const [afternoonMembers, setAfternoonMembers] = useState<string[]>(
     initialSchedule?.afternoonCommittees.members || [
-      "ທ່ານ ຮສ. ປອ. ຄຳເພັດ ບຸນນະວົງ",
-      "ທ່ານ ສຸກສະຫວັນ ຈຸນທະລີ",
+      "ທ່ານ ຮສ. ປອ. ຄຳເພັດ ບຸນນະດີ",
+      "ທ່ານ ສຸກສະຫວັນ ຈຸນດາລີ",
     ]
   );
 
@@ -502,7 +499,23 @@ export function GenerateScheduleModal({
           )}
 
           {/* Section 1: Date & General Settings */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-lao">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 font-lao">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-sky-600" /> ຮອບການສອບເສັງ (Exam Round)
+              </label>
+              <select
+                value={examRound}
+                onChange={(e) => setExamRound(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              >
+                <option value="PROPOSAL_1">ປ້ອງກັນຫົວບົດ ຊຸດທີ 1 (ກຸມພາ 2027)</option>
+                <option value="PROPOSAL_2">ປ້ອງກັນຫົວບົດ ຊຸດທີ 2 (ມີນາ 2027)</option>
+                <option value="FINAL_1">ປ້ອງກັນບົດຈົບຊັ້ນ ຊຸດທີ 1 (ມິຖຸນາ 2027)</option>
+                <option value="FINAL_2">ປ້ອງກັນບົດຈົບຊັ້ນ ຊຸດທີ 2 (ກໍລະກົດ 2027)</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-sky-600" /> ວັນທີສອບເສັງ (Exam Date)

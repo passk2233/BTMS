@@ -58,6 +58,11 @@ func run() error {
 	thesisSvc := service.NewThesisService(queries)
 	examSvc := service.NewExamService(queries)
 	academicSvc := service.NewAcademicService(queries)
+	financeSvc := service.NewFinanceService(queries)
+	printingSvc := service.NewPrintingService()
+	fileSvc := service.NewFileService(queries)
+	notifSvc := service.NewNotificationService()
+	reportSvc := service.NewReportService(queries)
 
 	// --- JWKS provider for JWT verification ---
 	jwksProvider, err := middleware.NewJWKSProvider(cfg.Auth.JWKSURL, cfg.Auth.JWKSCacheTTL, logger)
@@ -80,6 +85,11 @@ func run() error {
 		Thesis:       handler.NewThesisHandler(thesisSvc),
 		Exam:         handler.NewExamHandler(examSvc),
 		Academic:     handler.NewAcademicHandler(academicSvc),
+		Finance:      handler.NewFinanceHandler(financeSvc),
+		Printing:     handler.NewPrintingHandler(printingSvc),
+		File:         handler.NewFileHandler(fileSvc),
+		Notification: handler.NewNotificationHandler(notifSvc),
+		Report:       handler.NewReportHandler(reportSvc),
 		Queries:      queries,
 		JWKSProvider: jwksProvider,
 		Issuer:       cfg.Auth.Issuer,

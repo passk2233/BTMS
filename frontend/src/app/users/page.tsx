@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Users,
   ShieldCheck,
@@ -17,30 +17,25 @@ import {
   Award,
   BookOpen,
   Calendar,
-  ExternalLink,
-  Edit2,
   X,
-  ChevronRight,
-  UserCheck,
-  Sparkles,
   BarChart2,
   FolderOpen,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge, BadgeVariant } from "@/components/ui/badge";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
-import Link from "next/link";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   studentSearchableOptions,
   teacherSearchableOptions,
-  registeredStudents,
-  registeredTeachers,
   StudentRecord,
   TeacherRecord,
 } from "@/lib/academic-directory";
+import { createClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------------
 // Type Definitions
@@ -116,426 +111,59 @@ interface UserAccount {
 }
 
 // ---------------------------------------------------------------------------
-// Mock Data (Realistic Lao University Academic Context)
+// Role Helpers & Options
 // ---------------------------------------------------------------------------
 
-const initialStudents: Student[] = [
-  {
-    id: "std_01",
-    profileId: "p_std_01",
-    studentCode: "FS-CS-2022-001",
-    name: "ທ້າວ ສົມພອນ ແກ້ວມະນີ",
-    email: "somphone.k@student.nuol.edu.la",
-    department: "ວິສະວະກຳຄອມພິວເຕີ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    thesisId: "th_01",
-    thesisTopicTH: "ລະບົບບໍລິຫານຈັດການບົດໂຄງການຈົບຊັ້ນ ແລະ ການເງິນອັດຕະໂນມັດ",
-    thesisTopicEN: "Automated Bachelor Thesis and Financial Management System",
-    thesisStatus: "IN_PROGRESS",
-    isLeader: true,
-    primaryAdvisorName: "ຮສ. ດຣ. ສົມຊາຍ ປະເສີດ",
-    createdAt: "2024-09-01",
-  },
-  {
-    id: "std_02",
-    profileId: "p_std_02",
-    studentCode: "FS-CS-2022-002",
-    name: "ນາງ ມະນີວອນ ດວງດີ",
-    email: "manivon.d@student.nuol.edu.la",
-    department: "ວິສະວະກຳຄອມພິວເຕີ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    thesisId: "th_01",
-    thesisTopicTH: "ລະບົບບໍລິຫານຈັດການບົດໂຄງການຈົບຊັ້ນ ແລະ ການເງິນອັດຕະໂນມັດ",
-    thesisTopicEN: "Automated Bachelor Thesis and Financial Management System",
-    thesisStatus: "IN_PROGRESS",
-    isLeader: false,
-    primaryAdvisorName: "ຮສ. ດຣ. ສົມຊາຍ ປະເສີດ",
-    createdAt: "2024-09-01",
-  },
-  {
-    id: "std_03",
-    profileId: "p_std_03",
-    studentCode: "FS-IT-2022-015",
-    name: "ທ້າວ ບຸນທະວີ ສີສຸລາດ",
-    email: "bounthavy.s@student.nuol.edu.la",
-    department: "ເຕັກໂນໂລຊີຂໍ້ມູນຂ່າວສານ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    thesisId: "th_02",
-    thesisTopicTH: "ລະບົບກວດສອບໃບໜ້າເຂົ້າຫ້ອງຮຽນດ້ວຍ AI",
-    thesisTopicEN: "AI-based Facial Recognition Attendance System",
-    thesisStatus: "PROPOSAL_PASSED",
-    isLeader: true,
-    primaryAdvisorName: "ປອ. ບຸນມີ ໄຊຍະວົງ",
-    createdAt: "2024-09-01",
-  },
-  {
-    id: "std_04",
-    profileId: "p_std_04",
-    studentCode: "FS-IT-2022-016",
-    name: "ນາງ ວິໄລພອນ ຄຳພູວົງ",
-    email: "vilaiphone.k@student.nuol.edu.la",
-    department: "ເຕັກໂນໂລຊີຂໍ້ມູນຂ່າວສານ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    thesisId: "th_02",
-    thesisTopicTH: "ລະບົບກວດສອບໃບໜ້າເຂົ້າຫ້ອງຮຽນດ້ວຍ AI",
-    thesisTopicEN: "AI-based Facial Recognition Attendance System",
-    thesisStatus: "PROPOSAL_PASSED",
-    isLeader: false,
-    primaryAdvisorName: "ປອ. ບຸນມີ ໄຊຍະວົງ",
-    createdAt: "2024-09-01",
-  },
-  {
-    id: "std_05",
-    profileId: "p_std_05",
-    studentCode: "FS-SE-2022-033",
-    name: "ທ້າວ ອານຸສອນ ພົມມະຈັນ",
-    email: "anousone.p@student.nuol.edu.la",
-    department: "ວິສະວະກຳຊອບແວ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    thesisId: "th_03",
-    thesisTopicTH: "ແອັບພລິເຄຊັນຊອກຫາສະຖານີສາກລົດໄຟຟ້າໃນນະຄອນຫຼວງວຽງຈັນ",
-    thesisTopicEN: "EV Charging Station Finder Mobile App in Vientiane",
-    thesisStatus: "TOPIC_APPROVED",
-    isLeader: true,
-    primaryAdvisorName: "ອຈ. ດາວອນ ລັດສະໝີ",
-    createdAt: "2024-09-05",
-  },
-  {
-    id: "std_06",
-    profileId: "p_std_06",
-    studentCode: "FS-CS-2022-045",
-    name: "ທ້າວ ກິດຕິສັກ ສຸວັນນະສີ",
-    email: "kittisak.s@student.nuol.edu.la",
-    department: "ວິສະວະກຳຄອມພິວເຕີ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    createdAt: "2024-09-10",
-  },
-];
+function getRoleBadgeVariant(roleCode: string): BadgeVariant {
+  switch (roleCode) {
+    case "ADMIN":
+      return "rose";
+    case "STAFF":
+      return "sky";
+    case "HEAD":
+      return "sky";
+    case "ADVISOR":
+      return "amber";
+    case "COMMITTEE":
+      return "violet";
+    case "FINANCE":
+      return "emerald";
+    case "PRINTING":
+      return "sky";
+    case "STUDENT":
+      return "slate";
+    default:
+      return "slate";
+  }
+}
 
-const initialTeachers: Teacher[] = [
-  {
-    id: "tch_01",
-    profileId: "p_tch_01",
-    academicTitle: "ຮສ. ດຣ.",
-    name: "ສົມຊາຍ ປະເສີດ",
-    email: "somchai.p@nuol.edu.la",
-    department: "ພາກວິຊາວິສະວະກຳຄອມພິວເຕີ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    advisingCount: 4,
-    maxAdvisingQuota: 5,
-    committeeCount: 6,
-    roles: ["ADVISOR", "COMMITTEE"],
-    advisingTheses: [
-      {
-        thesisId: "th_01",
-        topicTH: "ລະບົບບໍລິຫານຈັດການບົດໂຄງການຈົບຊັ້ນ ແລະ ການເງິນອັດຕະໂນມັດ",
-        topicEN: "Automated Bachelor Thesis and Financial Management System",
-        status: "IN_PROGRESS",
-        academicYear: 2026,
-        semester: 1,
-        isPrimary: true,
-        studentLeader: "ທ້າວ ສົມພອນ ແກ້ວມະນີ",
-      },
-      {
-        thesisId: "th_04",
-        topicTH: "ລະບົບວິນິດໄສພະຍາດໃບເຂົ້າດ້ວຍ Convolutional Neural Networks",
-        topicEN: "Rice Leaf Disease Classification Using CNN",
-        status: "DEVELOPMENT",
-        academicYear: 2026,
-        semester: 1,
-        isPrimary: true,
-        studentLeader: "ນາງ ຈັນທະສອນ ວົງສາ",
-      },
-      {
-        thesisId: "th_05",
-        topicTH: "ການພັດທະນາ Smart IoT Gateway ສຳລັບຟາມອັດສະລິຍະ",
-        topicEN: "Smart IoT Gateway Development for Precision Agriculture",
-        status: "PROPOSAL_PASSED",
-        academicYear: 2026,
-        semester: 1,
-        isPrimary: true,
-        studentLeader: "ທ້າວ ພຸດທະວົງ ຄຳມະນີ",
-      },
-      {
-        thesisId: "th_06",
-        topicTH: "ລະບົບຄຸ້ມຄອງເອກະສານເອເລັກໂຕຣນິກມະຫາວິທະຍາໄລແຫ່ງຊາດ",
-        topicEN: "Electronic Document Management System for NUOL",
-        status: "TOPIC_APPROVED",
-        academicYear: 2026,
-        semester: 1,
-        isPrimary: false,
-        studentLeader: "ທ້າວ ພອນໄຊ ສີພະຈັນ",
-      },
-    ],
-    committeeExams: [
-      {
-        examId: "ex_01",
-        examTypeCode: "PROPOSAL",
-        scheduledDate: "2026-10-25",
-        startTime: "09:00",
-        endTime: "10:30",
-        examStatus: "SCHEDULED",
-        committeeRole: "CHAIRMAN",
-        topicTH: "ລະບົບກວດສອບໃບໜ້າເຂົ້າຫ້ອງຮຽນດ້ວຍ AI",
-        topicEN: "AI-based Facial Recognition Attendance System",
-        roomName: "ຫ້ອງສອບເສັງ 402 (ຕຶກ FE)",
-      },
-      {
-        examId: "ex_02",
-        examTypeCode: "PROPOSAL",
-        scheduledDate: "2026-10-25",
-        startTime: "10:45",
-        endTime: "12:15",
-        examStatus: "SCHEDULED",
-        committeeRole: "COMMITTEE",
-        topicTH: "ແອັບພລິເຄຊັນຊອກຫາສະຖານີສາກລົດໄຟຟ້າໃນນະຄອນຫຼວງວຽງຈັນ",
-        topicEN: "EV Charging Station Finder Mobile App in Vientiane",
-        roomName: "ຫ້ອງສອບເສັງ 402 (ຕຶກ FE)",
-      },
-      {
-        examId: "ex_03",
-        examTypeCode: "FINAL",
-        scheduledDate: "2026-11-02",
-        startTime: "13:30",
-        endTime: "15:00",
-        examStatus: "SCHEDULED",
-        committeeRole: "CHAIRMAN",
-        topicTH: "ລະບົບຄວາມປອດໄພເຄືອຂ່າຍດ້ວຍ Snort IDS",
-        topicEN: "Network Intrusion Detection System Using Snort",
-        roomName: "ຫ້ອງປະຊຸມໃຫຍ່ FE",
-      },
-    ],
-    createdAt: "2024-08-15",
-  },
-  {
-    id: "tch_02",
-    profileId: "p_tch_02",
-    academicTitle: "ປອ.",
-    name: "ບຸນມີ ໄຊຍະວົງ",
-    email: "bounmy.x@nuol.edu.la",
-    department: "ພາກວິຊາເຕັກໂນໂລຊີຂໍ້ມູນຂ່າວສານ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    advisingCount: 3,
-    maxAdvisingQuota: 5,
-    committeeCount: 5,
-    roles: ["ADVISOR", "COMMITTEE"],
-    advisingTheses: [
-      {
-        thesisId: "th_02",
-        topicTH: "ລະບົບກວດສອບໃບໜ້າເຂົ້າຫ້ອງຮຽນດ້ວຍ AI",
-        topicEN: "AI-based Facial Recognition Attendance System",
-        status: "PROPOSAL_PASSED",
-        academicYear: 2026,
-        semester: 1,
-        isPrimary: true,
-        studentLeader: "ທ້າວ ບຸນທະວີ ສີສຸລາດ",
-      },
-      {
-        thesisId: "th_07",
-        topicTH: "ລະບົບ Chatbot ໃຫ້ຄຳປຶກສາຫຼັກສູດການສຶກສາດ້ວຍ LLM",
-        topicEN: "Academic Curriculum Advisor Chatbot using LLM",
-        status: "IN_PROGRESS",
-        academicYear: 2026,
-        semester: 1,
-        isPrimary: true,
-        studentLeader: "ທ້າວ ສຸລິຍາ ມະນີວົງ",
-      },
-      {
-        thesisId: "th_08",
-        topicTH: "ການວິເຄາະຄວາມຮູ້ສຶກຈາກຄຳຕິຊົມນັກສຶກສາພາສາລາວ",
-        topicEN: "Sentiment Analysis of Lao Student Course Feedbacks",
-        status: "DEVELOPMENT",
-        academicYear: 2026,
-        semester: 1,
-        isPrimary: true,
-        studentLeader: "ນາງ ດາວວີ ຄຳສິງ",
-      },
-    ],
-    committeeExams: [
-      {
-        examId: "ex_04",
-        examTypeCode: "PROPOSAL",
-        scheduledDate: "2026-10-25",
-        startTime: "09:00",
-        endTime: "10:30",
-        examStatus: "SCHEDULED",
-        committeeRole: "COMMITTEE",
-        topicTH: "ລະບົບບໍລິຫານຈັດການບົດໂຄງການຈົບຊັ້ນ ແລະ ການເງິນອັດຕະໂນມັດ",
-        topicEN: "Automated Bachelor Thesis and Financial Management System",
-        roomName: "ຫ້ອງສອບເສັງ 401 (ຕຶກ FE)",
-      },
-      {
-        examId: "ex_05",
-        examTypeCode: "PROPOSAL",
-        scheduledDate: "2026-10-26",
-        startTime: "14:00",
-        endTime: "15:30",
-        examStatus: "SCHEDULED",
-        committeeRole: "SECRETARY",
-        topicTH: "ລະບົບ E-commerce ຂາຍສິນຄ້າຫັດຖະກຳລາວ",
-        topicEN: "Lao Handicraft E-commerce Platform",
-        roomName: "ຫ້ອງສອບເສັງ 403 (ຕຶກ FE)",
-      },
-    ],
-    createdAt: "2024-08-15",
-  },
-  {
-    id: "tch_03",
-    profileId: "p_tch_03",
-    academicTitle: "ອຈ.",
-    name: "ດາວອນ ລັດສະໝີ",
-    email: "davone.l@nuol.edu.la",
-    department: "ພາກວິຊາວິສະວະກຳຊອບແວ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    advisingCount: 2,
-    maxAdvisingQuota: 5,
-    committeeCount: 3,
-    roles: ["ADVISOR"],
-    advisingTheses: [
-      {
-        thesisId: "th_03",
-        topicTH: "ແອັບພລິເຄຊັນຊອກຫາສະຖານີສາກລົດໄຟຟ້າໃນນະຄອນຫຼວງວຽງຈັນ",
-        topicEN: "EV Charging Station Finder Mobile App in Vientiane",
-        status: "TOPIC_APPROVED",
-        academicYear: 2026,
-        semester: 1,
-        isPrimary: true,
-        studentLeader: "ທ້າວ ອານຸສອນ ພົມມະຈັນ",
-      },
-      {
-        thesisId: "th_09",
-        topicTH: "ລະບົບຈອງປີ້ລົດເມສາທາລະນະນະຄອນຫຼວງວຽງຈັນຜ່ານ QR",
-        topicEN: "Vientiane Public Bus Ticketing Mobile App via QR",
-        status: "PROPOSED",
-        academicYear: 2026,
-        semester: 1,
-        isPrimary: true,
-        studentLeader: "ນາງ ຈິນດາ ອິນທະວົງ",
-      },
-    ],
-    committeeExams: [
-      {
-        examId: "ex_06",
-        examTypeCode: "PROPOSAL",
-        scheduledDate: "2026-10-27",
-        startTime: "09:00",
-        endTime: "10:30",
-        examStatus: "SCHEDULED",
-        committeeRole: "SECRETARY",
-        topicTH: "ລະບົບຈັດການຄັງສິນຄ້າດ້ວຍບາໂຄດ",
-        topicEN: "Barcode Warehouse Management System",
-        roomName: "ຫ້ອງສອບເສັງ 401 (ຕຶກ FE)",
-      },
-    ],
-    createdAt: "2024-08-20",
-  },
-  {
-    id: "tch_04",
-    profileId: "p_tch_04",
-    academicTitle: "ຮສ. ປອ.",
-    name: "ຄຳຫຼ້າ ແກ້ວພິລາ",
-    email: "khamla.k@nuol.edu.la",
-    department: "ພາກວິຊາວິສະວະກຳຄອມພິວເຕີ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    advisingCount: 5,
-    maxAdvisingQuota: 5,
-    committeeCount: 7,
-    roles: ["ADVISOR", "COMMITTEE"],
-    advisingTheses: [],
-    committeeExams: [
-      {
-        examId: "ex_07",
-        examTypeCode: "PROPOSAL",
-        scheduledDate: "2026-10-25",
-        startTime: "09:00",
-        endTime: "10:30",
-        examStatus: "SCHEDULED",
-        committeeRole: "CHAIRMAN",
-        topicTH: "ລະບົບບໍລິຫານຈັດການບົດໂຄງການຈົບຊັ້ນ ແລະ ການເງິນອັດຕະໂນມັດ",
-        topicEN: "Automated Bachelor Thesis and Financial Management System",
-        roomName: "ຫ້ອງສອບເສັງ 401 (ຕຶກ FE)",
-      },
-    ],
-    createdAt: "2024-08-10",
-  },
-  {
-    id: "tch_05",
-    profileId: "p_tch_05",
-    academicTitle: "ອຈ. ປທ.",
-    name: "ສົມສະໜຸກ ວົງວິຈິດ",
-    email: "somsanouk.v@nuol.edu.la",
-    department: "ພາກວິຊາເຕັກໂນໂລຊີຂໍ້ມູນຂ່າວສານ",
-    faculty: "ຄະນະວິສະວະກຳສາດ",
-    advisingCount: 0,
-    maxAdvisingQuota: 5,
-    committeeCount: 4,
-    roles: ["COMMITTEE"],
-    advisingTheses: [],
-    committeeExams: [],
-    createdAt: "2024-08-22",
-  },
-];
-
-const mockUsersLao: UserAccount[] = [
-  {
-    id: "usr_01",
-    name: "ຮສ. ດຣ. ສົມຊາຍ ປະເສີດ",
-    email: "somchai.p@nuol.edu.la",
-    studentIdOrDept: "ພາກວິຊາວິສະວະກຳຄອມພິວເຕີ",
-    roles: [
-      { code: "STAFF", name: "ວິຊາການ", variant: "sky" },
-      { code: "ADVISOR", name: "ທີ່ປຶກສາ", variant: "amber" },
-      { code: "COMMITTEE", name: "ກຳມະການ", variant: "violet" },
-    ],
-    status: "ACTIVE",
-    statusLao: "ໃຊ້ງານປົກກະຕິ",
-    lastLogin: "ມື້ນີ້, 10:14",
-  },
-  {
-    id: "usr_02",
-    name: "ທ້າວ ສົມພອນ ແກ້ວມະນີ",
-    email: "somphone.k@student.nuol.edu.la",
-    studentIdOrDept: "ລະຫັດນັກສຶກສາ: FS-CS-2022-001",
-    roles: [{ code: "STUDENT", name: "ນັກສຶກສາ", variant: "slate" }],
-    status: "ACTIVE",
-    statusLao: "ໃຊ້ງານປົກກະຕິ",
-    lastLogin: "ມື້ວານນີ້, 18:40",
-  },
-  {
-    id: "usr_03",
-    name: "ນັດຖະພົງ ວັດທະນາ",
-    email: "nattapong.w@finance.nuol.edu.la",
-    studentIdOrDept: "ພະແນກການເງິນ ແລະ ຊັບສິນ",
-    roles: [{ code: "FINANCE", name: "ພະນັກງານການເງິນ", variant: "emerald" }],
-    status: "ACTIVE",
-    statusLao: "ໃຊ້ງານປົກກະຕິ",
-    lastLogin: "ມື້ນີ້, 08:30",
-  },
-  {
-    id: "usr_04",
-    name: "ສຸພາພອນ ບຸນມີ",
-    email: "supaporn.b@press.nuol.edu.la",
-    studentIdOrDept: "ໂຮງພິມມະຫາວິທະຍາໄລ",
-    roles: [{ code: "PRINTING", name: "ພະນັກງານໂຮງພິມ", variant: "sky" }],
-    status: "ACTIVE",
-    statusLao: "ໃຊ້ງານປົກກະຕິ",
-    lastLogin: "28 ກ.ຍ., 15:20",
-  },
-  {
-    id: "usr_05",
-    name: "ຜູ້ດູແລລະບົບຫຼັກ (Admin)",
-    email: "admin@nuol.edu.la",
-    studentIdOrDept: "ສູນໄອທີ ແລະ ໂຄງລ່າງພື້ນຖານ",
-    roles: [{ code: "ADMIN", name: "ຜູ້ດູແລລະບົບ", variant: "rose" }],
-    status: "ACTIVE",
-    statusLao: "ໃຊ້ງານປົກກະຕິ",
-    lastLogin: "ມື້ນີ້, 12:00",
-  },
-];
+function getRoleLaoName(roleCode: string): string {
+  switch (roleCode) {
+    case "ADMIN":
+      return "ຜູ້ດູແລລະບົບ";
+    case "STAFF":
+      return "ວິຊາການ";
+    case "HEAD":
+      return "ຫົວໜ້າພາກ";
+    case "ADVISOR":
+      return "ທີ່ປຶກສາ";
+    case "COMMITTEE":
+      return "ກຳມະການ";
+    case "FINANCE":
+      return "ການເງິນ";
+    case "PRINTING":
+      return "ໂຮງພິມ";
+    case "STUDENT":
+      return "ນັກສຶກສາ";
+    default:
+      return roleCode;
+  }
+}
 
 const allRoleOptionsLao = [
   { code: "ADMIN", name: "ຜູ້ດູແລລະບົບ (Admin)", description: "ຄຸ້ມຄອງລະບົບເຕັມຮູບແບບ ແລະ ຈັດການຖານຂໍ້ມູນ" },
   { code: "STAFF", name: "ພະນັກງານວິຊາການ (Staff)", description: "ຈັດຕາຕະລາງສອບເສັງ ແລະ ແຕ່ງຕັ້ງຄະນະກຳມະການ" },
+  { code: "HEAD", name: "ຫົວໜ້າພາກວິຊາ (Head of Department)", description: "ອະນຸມັດຕາຕະລາງສອບເສັງ ແລະ ການເບີກຈ່າຍເງິນ" },
   { code: "ADVISOR", name: "ອາຈານທີ່ປຶກສາ (Advisor)", description: "ກວດສອບ ແລະ ອະນຸມັດຫົວຂໍ້ບົດໂຄງການຂອງນັກສຶກສາ" },
   { code: "COMMITTEE", name: "ຄະນະກຳມະການສອບ (Committee)", description: "ຕັດເກຣດ ແລະ ໃຫ້ຄະແນນການສອບປ້ອງກັນບົດ" },
   { code: "FINANCE", name: "ພະນັກງານການເງິນ (Finance)", description: "ກວດສອບສະລິບຄ່າທຳນຽມ ແລະ ຈ່າຍເງິນຕອບແທນອາຈານ" },
@@ -546,12 +174,18 @@ const allRoleOptionsLao = [
 export default function UserManagementPage() {
   const [activeTab, setActiveTab] = useState<"students" | "teachers" | "advisers" | "committees" | "rbac">("students");
 
+  // Database and loading states
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   // Students state
-  const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [students, setStudents] = useState<Student[]>([]);
   const [studentSearch, setStudentSearch] = useState("");
   const [studentDeptFilter, setStudentDeptFilter] = useState("ALL");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [submittingStudent, setSubmittingStudent] = useState(false);
   const [newStudentForm, setNewStudentForm] = useState({
     studentCode: "",
     name: "",
@@ -561,13 +195,14 @@ export default function UserManagementPage() {
   });
 
   // Teachers state
-  const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [teacherSearch, setTeacherSearch] = useState("");
   const [teacherDeptFilter, setTeacherDeptFilter] = useState("ALL");
   const [teacherRoleFilter, setTeacherRoleFilter] = useState<"ALL" | "ADVISOR" | "COMMITTEE">("ALL");
   const [viewingPortfolioTeacher, setViewingPortfolioTeacher] = useState<Teacher | null>(null);
   const [viewingCommitteesTeacher, setViewingCommitteesTeacher] = useState<Teacher | null>(null);
   const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
+  const [submittingTeacher, setSubmittingTeacher] = useState(false);
   const [newTeacherForm, setNewTeacherForm] = useState({
     academicTitle: "ອຈ.",
     name: "",
@@ -578,11 +213,233 @@ export default function UserManagementPage() {
   });
 
   // RBAC State
-  const [users, setUsers] = useState<UserAccount[]>(mockUsersLao);
+  const [users, setUsers] = useState<UserAccount[]>([]);
   const [rbacSearch, setRbacSearch] = useState("");
   const [rbacRoleFilter, setRbacRoleFilter] = useState("ALL");
   const [selectedRbacUser, setSelectedRbacUser] = useState<UserAccount | null>(null);
   const [saveNotice, setSaveNotice] = useState(false);
+
+  // Load real data from live Supabase PostgreSQL
+  const fetchData = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+      const supabase = createClient();
+
+      // 1. Fetch Students
+      const { data: stdData, error: stdErr } = await supabase
+        .from("students")
+        .select(`
+          id,
+          profile_id,
+          student_code,
+          department,
+          faculty,
+          created_at,
+          profiles(display_name),
+          thesis_members(
+            is_leader,
+            theses(
+              id,
+              topic_th,
+              topic_en,
+              status,
+              thesis_advisors(
+                is_primary,
+                teachers(
+                  academic_title,
+                  profiles(display_name)
+                )
+              )
+            )
+          )
+        `)
+        .order("created_at", { ascending: false });
+
+      if (stdErr) throw stdErr;
+
+      const mappedStudents: Student[] = (stdData || []).map((row: any) => {
+        const primaryMember = row.thesis_members?.[0];
+        const thesis = primaryMember?.theses;
+        const primaryAdvisor = thesis?.thesis_advisors?.find((a: any) => a.is_primary)?.teachers || thesis?.thesis_advisors?.[0]?.teachers;
+        const advisorName = primaryAdvisor
+          ? `${primaryAdvisor.academic_title || ""} ${primaryAdvisor.profiles?.display_name || ""}`.trim()
+          : undefined;
+
+        return {
+          id: row.id,
+          profileId: row.profile_id,
+          studentCode: row.student_code,
+          name: row.profiles?.display_name || "ບໍ່ລະບຸຊື່",
+          email: `${row.student_code.toLowerCase().replace(/[^a-z0-9]/g, "")}@student.nuol.edu.la`,
+          department: row.department || "ວິສະວະກຳຄອມພິວເຕີ",
+          faculty: row.faculty || "ຄະນະວິສະວະກຳສາດ",
+          thesisId: thesis?.id,
+          thesisTopicTH: thesis?.topic_th,
+          thesisTopicEN: thesis?.topic_en,
+          thesisStatus: thesis?.status,
+          isLeader: primaryMember?.is_leader,
+          primaryAdvisorName: advisorName,
+          createdAt: row.created_at ? row.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
+        };
+      });
+
+      // 2. Fetch Teachers
+      const { data: tchData, error: tchErr } = await supabase
+        .from("teachers")
+        .select(`
+          id,
+          profile_id,
+          academic_title,
+          department,
+          faculty,
+          affiliation,
+          quota,
+          created_at,
+          profiles(display_name),
+          teacher_expertise(category_code, is_primary),
+          thesis_advisors(
+            thesis_id,
+            is_primary,
+            theses(
+              id,
+              topic_th,
+              topic_en,
+              status,
+              academic_year,
+              semester,
+              thesis_members(
+                is_leader,
+                students(
+                  profiles(display_name)
+                )
+              )
+            )
+          ),
+          exam_committees(
+            role,
+            exams(
+              id,
+              scheduled_date,
+              start_time,
+              end_time,
+              status,
+              theses(topic_th, topic_en),
+              exam_rooms(name)
+            )
+          )
+        `)
+        .order("created_at", { ascending: true });
+
+      if (tchErr) throw tchErr;
+
+      const mappedTeachers: Teacher[] = (tchData || []).map((row: any) => {
+        const dispName = row.profiles?.display_name || "";
+        const cleanName = dispName.replace(row.academic_title || "", "").trim() || dispName;
+
+        const advisingTheses: AdvisingThesis[] = (row.thesis_advisors || []).map((ta: any) => {
+          const th = ta.theses;
+          const leaderMember = th?.thesis_members?.find((m: any) => m.is_leader) || th?.thesis_members?.[0];
+          const leaderName = leaderMember?.students?.profiles?.display_name || "ນັກສຶກສາ";
+          return {
+            thesisId: ta.thesis_id,
+            topicTH: th?.topic_th || "",
+            topicEN: th?.topic_en || "",
+            status: th?.status || "IN_PROGRESS",
+            academicYear: th?.academic_year || 2026,
+            semester: th?.semester || 1,
+            isPrimary: ta.is_primary ?? true,
+            studentLeader: leaderName,
+          };
+        });
+
+        const committeeExams: CommitteeExam[] = (row.exam_committees || []).map((ec: any) => {
+          const ex = ec.exams;
+          return {
+            examId: ex?.id || row.id,
+            examTypeCode: "PROPOSAL",
+            scheduledDate: ex?.scheduled_date || "2027-02-28",
+            startTime: ex?.start_time ? ex.start_time.slice(0, 5) : "09:00",
+            endTime: ex?.end_time ? ex.end_time.slice(0, 5) : "10:30",
+            examStatus: ex?.status || "SCHEDULED",
+            committeeRole: (ec.role || "COMMITTEE") as "CHAIRMAN" | "COMMITTEE" | "SECRETARY",
+            topicTH: ex?.theses?.topic_th || "",
+            topicEN: ex?.theses?.topic_en || "",
+            roomName: ex?.exam_rooms?.name || "ຫ້ອງສອບເສັງ 401 (ຕຶກ FE)",
+          };
+        });
+
+        return {
+          id: row.id,
+          profileId: row.profile_id,
+          academicTitle: row.academic_title || "ອຈ.",
+          name: cleanName,
+          email: `teacher_${row.id.slice(0, 6)}@nuol.edu.la`,
+          department: row.department || "ພາກວິຊາວິສະວະກຳຄອມພິວເຕີ",
+          faculty: row.faculty || "ຄະນະວິສະວະກຳສາດ",
+          advisingCount: advisingTheses.length,
+          maxAdvisingQuota: row.quota || 5,
+          committeeCount: committeeExams.length,
+          roles: ["ADVISOR", "COMMITTEE"],
+          advisingTheses,
+          committeeExams,
+          createdAt: row.created_at ? row.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
+        };
+      });
+
+      // 3. Fetch RBAC Profiles & Roles
+      const { data: profData, error: profErr } = await supabase
+        .from("profiles")
+        .select(`
+          id,
+          display_name,
+          created_at,
+          user_roles(
+            role_code,
+            roles(name)
+          )
+        `)
+        .order("created_at", { ascending: false });
+
+      if (profErr) throw profErr;
+
+      const mappedUsers: UserAccount[] = (profData || []).map((row: any) => {
+        const roles = (row.user_roles || []).map((ur: any) => ({
+          code: ur.role_code,
+          name: getRoleLaoName(ur.role_code),
+          variant: getRoleBadgeVariant(ur.role_code),
+        }));
+
+        const isStudent = roles.some((r: any) => r.code === "STUDENT");
+
+        return {
+          id: row.id,
+          name: row.display_name || "ຜູ້ໃຊ້ງານລະບົບ",
+          email: `user_${row.id.slice(0, 8)}@nuol.edu.la`,
+          studentIdOrDept: isStudent ? "ບັນຊີລະຫັດນັກສຶກສາ (Student)" : "ພາກວິຊາວິສະວະກຳຄອມພິວເຕີ / ໄອທີ",
+          roles: roles.length > 0 ? roles : [{ code: "USER", name: "ຜູ້ໃຊ້ທົ່ວໄປ", variant: "slate" as BadgeVariant }],
+          status: "ACTIVE" as const,
+          statusLao: "ໃຊ້ງານປົກກະຕິ",
+          lastLogin: "ມື້ນີ້, 12:00",
+        };
+      });
+
+      setStudents(mappedStudents);
+      setTeachers(mappedTeachers);
+      setUsers(mappedUsers);
+    } catch (err: any) {
+      console.error("Error loading real data from Supabase:", err);
+      setError(err?.message || "ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່ຖານຂໍ້ມູນ");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Filtered Students
   const filteredStudents = students.filter((s) => {
@@ -620,64 +477,145 @@ export default function UserManagementPage() {
   });
 
   // Handlers
-  const handleAddStudent = (e: React.FormEvent) => {
+  const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStudentForm.studentCode || !newStudentForm.name) return;
-    const created: Student = {
-      id: `std_${Date.now()}`,
-      profileId: `p_${Date.now()}`,
-      studentCode: newStudentForm.studentCode,
-      name: newStudentForm.name,
-      email: newStudentForm.email || `${newStudentForm.studentCode.toLowerCase()}@student.nuol.edu.la`,
-      department: newStudentForm.department,
-      faculty: newStudentForm.faculty,
-      createdAt: new Date().toISOString().split("T")[0],
-    };
-    setStudents([created, ...students]);
-    setShowAddStudentModal(false);
-    setNewStudentForm({
-      studentCode: "",
-      name: "",
-      email: "",
-      department: "ວິສະວະກຳຄອມພິວເຕີ",
-      faculty: "ຄະນະວິສະວະກຳສາດ",
-    });
+    setSubmittingStudent(true);
+    try {
+      const supabase = createClient();
+      const profileId = crypto.randomUUID();
+      const studentId = crypto.randomUUID();
+
+      await supabase.from("profiles").insert({
+        id: profileId,
+        display_name: newStudentForm.name,
+      });
+
+      await supabase.from("students").insert({
+        id: studentId,
+        profile_id: profileId,
+        student_code: newStudentForm.studentCode,
+        department: newStudentForm.department,
+        faculty: newStudentForm.faculty,
+      });
+
+      await supabase.from("user_roles").insert({
+        profile_id: profileId,
+        role_code: "STUDENT",
+      });
+
+      const created: Student = {
+        id: studentId,
+        profileId: profileId,
+        studentCode: newStudentForm.studentCode,
+        name: newStudentForm.name,
+        email: newStudentForm.email || `${newStudentForm.studentCode.toLowerCase().replace(/[^a-z0-9]/g, "")}@student.nuol.edu.la`,
+        department: newStudentForm.department,
+        faculty: newStudentForm.faculty,
+        createdAt: new Date().toISOString().split("T")[0],
+      };
+      setStudents((prev) => [created, ...prev]);
+      setShowAddStudentModal(false);
+      setNewStudentForm({
+        studentCode: "",
+        name: "",
+        email: "",
+        department: "ວິສະວະກຳຄອມພິວເຕີ",
+        faculty: "ຄະນະວິສະວະກຳສາດ",
+      });
+    } catch (err: any) {
+      console.error("Error creating student in Supabase:", err);
+      alert("ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກນັກສຶກສາ: " + (err.message || ""));
+    } finally {
+      setSubmittingStudent(false);
+    }
   };
 
-  const handleAddTeacher = (e: React.FormEvent) => {
+  const handleAddTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTeacherForm.name) return;
-    const created: Teacher = {
-      id: `tch_${Date.now()}`,
-      profileId: `p_${Date.now()}`,
-      academicTitle: newTeacherForm.academicTitle,
-      name: newTeacherForm.name,
-      email: newTeacherForm.email || `teacher_${Date.now()}@nuol.edu.la`,
-      department: newTeacherForm.department,
-      faculty: newTeacherForm.faculty,
-      advisingCount: 0,
-      maxAdvisingQuota: 5,
-      committeeCount: 0,
-      roles: newTeacherForm.roles,
-      advisingTheses: [],
-      committeeExams: [],
-      createdAt: new Date().toISOString().split("T")[0],
-    };
-    setTeachers([created, ...teachers]);
-    setShowAddTeacherModal(false);
-    setNewTeacherForm({
-      academicTitle: "ອຈ.",
-      name: "",
-      email: "",
-      department: "ພາກວິຊາວິສະວະກຳຄອມພິວເຕີ",
-      faculty: "ຄະນະວິສະວະກຳສາດ",
-      roles: ["ADVISOR", "COMMITTEE"],
-    });
+    setSubmittingTeacher(true);
+    try {
+      const supabase = createClient();
+      const profileId = crypto.randomUUID();
+      const teacherId = crypto.randomUUID();
+
+      await supabase.from("profiles").insert({
+        id: profileId,
+        display_name: `${newTeacherForm.academicTitle} ${newTeacherForm.name}`.trim(),
+      });
+
+      await supabase.from("teachers").insert({
+        id: teacherId,
+        profile_id: profileId,
+        academic_title: newTeacherForm.academicTitle,
+        department: newTeacherForm.department,
+        faculty: newTeacherForm.faculty,
+        affiliation: "CEIT",
+        quota: 5,
+      });
+
+      for (const r of newTeacherForm.roles) {
+        await supabase.from("user_roles").insert({
+          profile_id: profileId,
+          role_code: r,
+        });
+      }
+
+      const created: Teacher = {
+        id: teacherId,
+        profileId: profileId,
+        academicTitle: newTeacherForm.academicTitle,
+        name: newTeacherForm.name,
+        email: newTeacherForm.email || `teacher_${Date.now()}@nuol.edu.la`,
+        department: newTeacherForm.department,
+        faculty: newTeacherForm.faculty,
+        advisingCount: 0,
+        maxAdvisingQuota: 5,
+        committeeCount: 0,
+        roles: newTeacherForm.roles,
+        advisingTheses: [],
+        committeeExams: [],
+        createdAt: new Date().toISOString().split("T")[0],
+      };
+      setTeachers((prev) => [created, ...prev]);
+      setShowAddTeacherModal(false);
+      setNewTeacherForm({
+        academicTitle: "ອຈ.",
+        name: "",
+        email: "",
+        department: "ພາກວິຊາວິສະວະກຳຄອມພິວເຕີ",
+        faculty: "ຄະນະວິສະວະກຳສາດ",
+        roles: ["ADVISOR", "COMMITTEE"],
+      });
+    } catch (err: any) {
+      console.error("Error creating teacher in Supabase:", err);
+      alert("ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກອາຈານ: " + (err.message || ""));
+    } finally {
+      setSubmittingTeacher(false);
+    }
   };
 
-  const toggleRbacRole = (roleCode: string) => {
+  const toggleRbacRole = async (roleCode: string) => {
     if (!selectedRbacUser) return;
     const exists = selectedRbacUser.roles.some((r) => r.code === roleCode);
+    try {
+      const supabase = createClient();
+      if (exists) {
+        await supabase.from("user_roles").delete().match({
+          profile_id: selectedRbacUser.id,
+          role_code: roleCode,
+        });
+      } else {
+        await supabase.from("user_roles").insert({
+          profile_id: selectedRbacUser.id,
+          role_code: roleCode,
+        });
+      }
+    } catch (err) {
+      console.error("Error updating user_role in DB:", err);
+    }
+
     let updatedRoles: { code: string; name: string; variant: BadgeVariant }[] = [];
     if (exists) {
       updatedRoles = selectedRbacUser.roles.filter((r) => r.code !== roleCode);
@@ -686,7 +624,7 @@ export default function UserManagementPage() {
       if (option) {
         updatedRoles = [
           ...selectedRbacUser.roles,
-          { code: option.code, name: option.name.split(" ")[0], variant: "sky" as BadgeVariant },
+          { code: option.code, name: getRoleLaoName(option.code), variant: getRoleBadgeVariant(option.code) },
         ];
       }
     }
@@ -712,7 +650,7 @@ export default function UserManagementPage() {
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
                     ຄຸ້ມຄອງນັກສຶກສາ ແລະ ຄູອາຈານ (Academic Governance)
                   </h1>
-                  <Badge variant="sky">Staff &amp; Head Control</Badge>
+                  <Badge variant="emerald" dot>Live PostgreSQL</Badge>
                 </div>
                 <p className="mt-1 text-sm text-slate-500">
                   ຈັດການລາຍຊື່ນັກສຶກສາ, ຄຸ້ມຄອງພາລະງານອາຈານທີ່ປຶກສາ (Advisers), ການແຕ່ງຕັ້ງຄະນະກຳມະການສອບ (Committees) ແລະ ສິດທິລະບົບ.
@@ -721,7 +659,16 @@ export default function UserManagementPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchData(true)}
+              disabled={refreshing || loading}
+              leftIcon={<RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />}
+            >
+              Sync DB
+            </Button>
             {activeTab === "students" && (
               <Button
                 onClick={() => setShowAddStudentModal(true)}
@@ -740,6 +687,18 @@ export default function UserManagementPage() {
             )}
           </div>
         </div>
+
+        {error && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <span>{error}</span>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => fetchData(true)}>
+              ລອງໃໝ່
+            </Button>
+          </div>
+        )}
 
         {/* 4 Navigation Tabs */}
         <div className="flex items-center border-b border-slate-200 gap-1 overflow-x-auto pb-px">
@@ -913,7 +872,16 @@ export default function UserManagementPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredStudents.length === 0 ? (
+                    {loading ? (
+                      <tr>
+                        <td colSpan={8} className="py-12 text-center text-slate-500">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <Loader2 className="h-6 w-6 animate-spin text-sky-500" />
+                            <span>ກຳລັງໂຫຼດຂໍ້ມູນນັກສຶກສາຈາກຖານຂໍ້ມູນຫຼັກ Supabase...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredStudents.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="py-12 text-center text-slate-400">
                           ບໍ່ພົບຂໍ້ມູນນັກສຶກສາທີ່ກົງກັບເງື່ອນໄຂ
@@ -1093,9 +1061,25 @@ export default function UserManagementPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredTeachers
-                      .filter((t) => t.roles.includes("ADVISOR"))
-                      .map((tch) => {
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-500">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                            <span>ກຳລັງໂຫຼດຂໍ້ມູນອາຈານທີ່ປຶກສາ ແລະ ໂຄຕ້າຈາກ Supabase...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredTeachers.filter((t) => t.roles.includes("ADVISOR")).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-400">
+                          ບໍ່ພົບຂໍ້ມູນອາຈານທີ່ປຶກສາທີ່ກົງກັບເງື່ອນໄຂ
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTeachers
+                        .filter((t) => t.roles.includes("ADVISOR"))
+                        .map((tch) => {
                         const percent = Math.min(100, Math.round((tch.advisingCount / tch.maxAdvisingQuota) * 100));
                         const isFull = tch.advisingCount >= tch.maxAdvisingQuota;
                         return (
@@ -1153,7 +1137,8 @@ export default function UserManagementPage() {
                             </td>
                           </tr>
                         );
-                      })}
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1265,9 +1250,25 @@ export default function UserManagementPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredTeachers
-                      .filter((t) => t.roles.includes("COMMITTEE"))
-                      .map((tch) => {
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-500">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+                            <span>ກຳລັງໂຫຼດຂໍ້ມູນຄະນະກຳມະການສອບເສັງຈາກ Supabase...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredTeachers.filter((t) => t.roles.includes("COMMITTEE")).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-400">
+                          ບໍ່ພົບຂໍ້ມູນກຳມະການສອບທີ່ກົງກັບເງື່ອນໄຂ
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTeachers
+                        .filter((t) => t.roles.includes("COMMITTEE"))
+                        .map((tch) => {
                         const chairCount = tch.committeeExams.filter((ce) => ce.committeeRole === "CHAIRMAN").length;
                         const memCount = tch.committeeExams.filter((ce) => ce.committeeRole === "COMMITTEE").length;
                         const secCount = tch.committeeExams.filter((ce) => ce.committeeRole === "SECRETARY").length;
@@ -1316,7 +1317,8 @@ export default function UserManagementPage() {
                             </td>
                           </tr>
                         );
-                      })}
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1333,15 +1335,15 @@ export default function UserManagementPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
                 title="ຈຳນວນບັນຊີທັງໝົດ"
-                value="342 ບັນຊີ"
-                change="12 ລໍຖ້າການເປີດໃຊ້"
+                value={`${users.length} ບັນຊີ`}
+                change="ບັນຊີໃນລະບົບ"
                 trend="neutral"
-                description="ເຊື່ອມຕໍ່ຜ່ານ Supabase Auth"
+                description="ເຊື່ອມຕໍ່ຜ່ານ Supabase Profiles"
                 icon={<Users className="h-5 w-5" />}
               />
               <StatCard
                 title="ອາຈານທີ່ປຶກສາ"
-                value="48 ທ່ານ"
+                value={`${teachers.filter((t) => t.roles.includes("ADVISOR")).length} ທ່ານ`}
                 change="ກຳລັງເບິ່ງແຍງບົດ"
                 trend="up"
                 description="ປະຈຳສົກຮຽນ 2026"
@@ -1349,18 +1351,18 @@ export default function UserManagementPage() {
               />
               <StatCard
                 title="ຄະນະກຳມະການສອບເສັງ"
-                value="64 ທ່ານ"
+                value={`${teachers.filter((t) => t.roles.includes("COMMITTEE")).length} ທ່ານ`}
                 change="ມີລາຍຊື່ແຕ່ງຕັ້ງ"
                 trend="up"
                 description="ມີສິດຮັບເງິນຕອບແທນ"
                 icon={<Key className="h-5 w-5" />}
               />
               <StatCard
-                title="ບັນທຶກຄວາມປອດໄພ"
-                value="1,289 ລາຍການ"
-                change="ບໍ່ພົບຄວາມຜິດປົກກະຕິ"
+                title="ນັກສຶກສາລົງທະບຽນ"
+                value={`${students.length} ຄົນ`}
+                change="ບັນຊີ Student"
                 trend="up"
-                description="ບັນທຶກໄວ້ໃນ audit_logs"
+                description="ບັນທຶກໄວ້ໃນຖານຂໍ້ມູນ"
                 icon={<History className="h-5 w-5" />}
               />
             </div>
@@ -1388,6 +1390,7 @@ export default function UserManagementPage() {
                   <option value="ALL">ທຸກບົດບາດ</option>
                   <option value="ADMIN">ADMIN</option>
                   <option value="STAFF">STAFF</option>
+                  <option value="HEAD">HEAD</option>
                   <option value="ADVISOR">ADVISOR</option>
                   <option value="COMMITTEE">COMMITTEE</option>
                   <option value="STUDENT">STUDENT</option>
@@ -1411,37 +1414,54 @@ export default function UserManagementPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredRbacUsers.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-slate-900">{u.name}</div>
-                          <div className="text-xs text-slate-400">{u.email}</div>
-                        </td>
-                        <td className="py-3 px-4 text-xs text-slate-700">{u.studentIdOrDept}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {u.roles.map((r) => (
-                              <Badge key={r.code} variant={r.variant}>
-                                {r.name}
-                              </Badge>
-                            ))}
+                    {loading ? (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-500">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <Loader2 className="h-6 w-6 animate-spin text-rose-500" />
+                            <span>ກຳລັງໂຫຼດຂໍ້ມູນບັນຊີ ແລະ ສິດທິລະບົບຈາກ Supabase...</span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-center">
-                          <Badge variant="emerald">{u.statusLao}</Badge>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedRbacUser(u)}
-                            leftIcon={<Key className="h-3.5 w-3.5" />}
-                          >
-                            ແກ້ໄຂສິດທິ
-                          </Button>
+                      </tr>
+                    ) : filteredRbacUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-400">
+                          ບໍ່ພົບຂໍ້ມູນບັນຊີທີ່ກົງກັບເງື່ອນໄຂ
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredRbacUsers.map((u) => (
+                        <tr key={u.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-slate-900">{u.name}</div>
+                            <div className="text-xs text-slate-400">{u.email}</div>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-slate-700">{u.studentIdOrDept}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {u.roles.map((r) => (
+                                <Badge key={r.code} variant={r.variant}>
+                                  {r.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <Badge variant="emerald">{u.statusLao}</Badge>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSelectedRbacUser(u)}
+                              leftIcon={<Key className="h-3.5 w-3.5" />}
+                            >
+                              ແກ້ໄຂສິດທິ
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1575,7 +1595,9 @@ export default function UserManagementPage() {
                   <Button variant="outline" type="button" onClick={() => setShowAddStudentModal(false)}>
                     ຍົກເລີກ
                   </Button>
-                  <Button type="submit">ບັນທຶກຂໍ້ມູນ</Button>
+                  <Button type="submit" disabled={submittingStudent}>
+                    {submittingStudent ? "ກຳລັງບັນທຶກ..." : "ບັນທຶກຂໍ້ມູນ"}
+                  </Button>
                 </div>
               </form>
             </div>
@@ -1734,7 +1756,9 @@ export default function UserManagementPage() {
                   <Button variant="outline" type="button" onClick={() => setShowAddTeacherModal(false)}>
                     ຍົກເລີກ
                   </Button>
-                  <Button type="submit">ບັນທຶກຂໍ້ມູນ</Button>
+                  <Button type="submit" disabled={submittingTeacher}>
+                    {submittingTeacher ? "ກຳລັງບັນທຶກ..." : "ບັນທຶກຂໍ້ມູນ"}
+                  </Button>
                 </div>
               </form>
             </div>
@@ -1987,6 +2011,56 @@ export default function UserManagementPage() {
                 <Button size="sm" onClick={() => setSelectedRbacUser(null)}>
                   ສຳເລັດ
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedStudent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 text-sky-600" />
+                  <h3 className="font-semibold text-slate-900">ຂໍ້ມູນນັກສຶກສາ (Student Profile)</h3>
+                </div>
+                <button
+                  onClick={() => setSelectedStudent(null)}
+                  className="rounded-lg p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4 text-sm">
+                <div>
+                  <label className="text-xs text-slate-500 font-medium">ຊື່ ແລະ ນາມສະກຸນ</label>
+                  <div className="font-semibold text-slate-900 text-base">{selectedStudent.name}</div>
+                  <div className="text-xs text-slate-500 font-mono">ລະຫັດ: {selectedStudent.studentCode}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                  <div>
+                    <label className="text-xs text-slate-500 font-medium">ພາກວິຊາ</label>
+                    <div className="font-medium text-slate-800">{selectedStudent.department}</div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 font-medium">ສະຖານະບົດໂຄງການ</label>
+                    <div>
+                      {selectedStudent.thesisStatus === "IN_PROGRESS" && <Badge variant="amber">ກຳລັງດຳເນີນການ</Badge>}
+                      {selectedStudent.thesisStatus === "PROPOSAL_PASSED" && <Badge variant="emerald">ຜ່ານການສອບຫົວຂໍ້</Badge>}
+                      {selectedStudent.thesisStatus === "TOPIC_APPROVED" && <Badge variant="violet">ອະນຸມັດຫົວຂໍ້ແລ້ວ</Badge>}
+                      {!selectedStudent.thesisStatus && <Badge variant="slate">ລໍຖ້າຈັບກຸ່ມ</Badge>}
+                    </div>
+                  </div>
+                </div>
+                {selectedStudent.email && (
+                  <div className="pt-2 border-t border-slate-100">
+                    <label className="text-xs text-slate-500 font-medium">ອີເມວ</label>
+                    <div className="text-slate-800">{selectedStudent.email}</div>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end px-6 py-3 bg-slate-50 border-t border-slate-100">
+                <Button size="sm" onClick={() => setSelectedStudent(null)}>ປິດ</Button>
               </div>
             </div>
           </div>

@@ -18,7 +18,6 @@ export function Stepper({ steps, className = "" }: StepperProps) {
     <nav aria-label="Thesis Milestones Progress" className={`w-full overflow-x-auto py-2 ${className}`}>
       <ol className="flex items-center min-w-[700px] justify-between">
         {steps.map((step, index) => {
-          const isFirst = index === 0;
           const isLast = index === steps.length - 1;
 
           return (

@@ -129,6 +129,8 @@ type CreateTeacherRequest struct {
 	AcademicTitle string `json:"academic_title"`
 	Department    string `json:"department"`
 	Faculty       string `json:"faculty"`
+	Affiliation   string `json:"affiliation"`
+	Quota         int32  `json:"quota"`
 }
 
 // CreateTeacher registers a teacher record for an existing profile.
@@ -141,7 +143,7 @@ func (h *AcademicHandler) CreateTeacher(c *gin.Context) {
 		return
 	}
 
-	teacher, err := h.svc.CreateTeacher(c.Request.Context(), body.ProfileID, body.AcademicTitle, body.Department, body.Faculty)
+	teacher, err := h.svc.CreateTeacher(c.Request.Context(), body.ProfileID, body.AcademicTitle, body.Department, body.Faculty, body.Affiliation, body.Quota)
 	if err != nil {
 		utils.RespondError(c, err)
 		return
@@ -153,9 +155,11 @@ type UpdateTeacherRequest struct {
 	AcademicTitle string `json:"academic_title"`
 	Department    string `json:"department"`
 	Faculty       string `json:"faculty"`
+	Affiliation   string `json:"affiliation"`
+	Quota         int32  `json:"quota"`
 }
 
-// UpdateTeacher updates a teacher's academic title, department, or faculty.
+// UpdateTeacher updates a teacher's academic title, department, faculty, affiliation, or quota.
 //
 //	PUT /api/teachers/:id
 func (h *AcademicHandler) UpdateTeacher(c *gin.Context) {
@@ -166,7 +170,7 @@ func (h *AcademicHandler) UpdateTeacher(c *gin.Context) {
 		return
 	}
 
-	teacher, err := h.svc.UpdateTeacher(c.Request.Context(), id, body.AcademicTitle, body.Department, body.Faculty)
+	teacher, err := h.svc.UpdateTeacher(c.Request.Context(), id, body.AcademicTitle, body.Department, body.Faculty, body.Affiliation, body.Quota)
 	if err != nil {
 		utils.RespondError(c, err)
 		return

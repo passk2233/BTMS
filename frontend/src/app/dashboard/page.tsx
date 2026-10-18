@@ -10,11 +10,8 @@ import {
   Plus,
   ArrowRight,
   Clock,
-  CheckCircle2,
-  AlertTriangle,
   FileText,
   User,
-  ExternalLink,
   FileCheck2,
   BarChart3,
 } from "lucide-react";

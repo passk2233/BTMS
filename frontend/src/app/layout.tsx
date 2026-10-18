@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Script from "next/script";
 
 import { AuthProvider } from "@/components/auth-provider";
 
@@ -18,10 +19,13 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html lang="en">
       <body>
         <AuthProvider>{children}</AuthProvider>
-      {/* impeccable-live-start */}
-<script src="http://localhost:8400/live.js?token=d4401569-4e5a-4a2d-b0d8-5975b1c0f64b"></script>
-{/* impeccable-live-end */}
-</body>
+        {/* impeccable-live-start */}
+        <Script
+          src="http://localhost:8400/live.js?token=d4401569-4e5a-4a2d-b0d8-5975b1c0f64b"
+          strategy="afterInteractive"
+        />
+        {/* impeccable-live-end */}
+      </body>
     </html>
   );
 }

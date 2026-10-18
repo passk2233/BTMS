@@ -209,3 +209,116 @@ func (h *ExamHandler) ListCriteria(c *gin.Context) {
 	// We need direct query access here — delegate to handler since it's a simple read
 	c.JSON(http.StatusOK, gin.H{"message": "Criteria listed via exam_type=" + examType})
 }
+
+// ListRounds returns examination rounds filtered by year and period.
+//
+//	GET /api/exams/rounds?year=2026&period=PROPOSAL
+func (h *ExamHandler) ListRounds(c *gin.Context) {
+	year := int32(utils.QueryInt(c, "year", 0))
+	period := c.Query("period")
+
+	rounds, err := h.svc.ListRounds(c.Request.Context(), year, period)
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": rounds})
+}
+
+// GetRound returns round details by ID.
+//
+//	GET /api/exams/rounds/:id
+func (h *ExamHandler) GetRound(c *gin.Context) {
+	round, err := h.svc.GetRound(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, round)
+}
+
+type CreateRoundRequest struct {
+	AcademicYear int32  `json:"academic_year" binding:"required"`
+	Period       string `json:"period" binding:"required"`
+	RoundNo      int32  `json:"round_no" binding:"required"`
+	Name         string `json:"name"`
+	StartDate    string `json:"start_date"`
+	EndDate      string `json:"end_date"`
+}
+
+// CreateRound creates a new exam round.
+//
+//	POST /api/exams/rounds
+func (h *ExamHandler) CreateRound(c *gin.Context) {
+	var body CreateRoundRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		utils.RespondError(c, utils.BadRequest("Invalid request body."))
+		return
+	}
+
+	round, err := h.svc.CreateRound(c.Request.Context(), body.AcademicYear, body.Period, body.RoundNo, body.Name, body.StartDate, body.EndDate)
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, round)
+}
+
+// CloseRound closes an open exam round.
+//
+//	POST /api/exams/rounds/:id/close
+func (h *ExamHandler) CloseRound(c *gin.Context) {
+	round, err := h.svc.CloseRound(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, round)
+}
+
+// ListRoundRooms returns room and category bindings for a round.
+//
+//	GET /api/exams/rounds/:id/rooms
+func (h *ExamHandler) ListRoundRooms(c *gin.Context) {
+	rooms, err := h.svc.ListRoundRooms(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": rooms})
+}
+
+type AssignRoundRoomRequest struct {
+	RoomID       string `json:"room_id" binding:"required"`
+	CategoryCode string `json:"category_code" binding:"required"`
+}
+
+// AssignRoundRoom binds a room to a category for a round.
+//
+//	POST /api/exams/rounds/:id/rooms
+func (h *ExamHandler) AssignRoundRoom(c *gin.Context) {
+	var body AssignRoundRoomRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		utils.RespondError(c, utils.BadRequest("room_id and category_code are required."))
+		return
+	}
+
+	room, err := h.svc.AssignRoundRoom(c.Request.Context(), c.Param("id"), body.RoomID, body.CategoryCode)
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, room)
+}
+
+// CalculateRoundCommitteeFees calculates and summarizes committee fees for a round.
+//
+//	GET /api/exams/rounds/:id/committee-fees
+func (h *ExamHandler) CalculateRoundCommitteeFees(c *gin.Context) {
+	summary, err := h.svc.CalculateRoundCommitteeFees(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, summary)
+}

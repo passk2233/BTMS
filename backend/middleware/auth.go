@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
@@ -40,13 +42,16 @@ type jwkKey struct {
 	Use string `json:"use"`
 	N   string `json:"n"`
 	E   string `json:"e"`
+	Crv string `json:"crv"`
+	X   string `json:"x"`
+	Y   string `json:"y"`
 }
 
 type jwksDocument struct {
 	Keys []jwkKey `json:"keys"`
 }
 
-// JWKSProvider fetches, caches and serves RSA public keys from a remote JWKS
+// JWKSProvider fetches, caches and serves public keys (RSA/ECDSA) from a remote JWKS
 // endpoint for JWT signature verification. Keys are refreshed when the
 // configurable cache TTL expires.
 type JWKSProvider struct {
@@ -56,7 +61,7 @@ type JWKSProvider struct {
 	client   *http.Client
 
 	mu        sync.RWMutex
-	keys      map[string]*rsa.PublicKey
+	keys      map[string]any
 	fetchedAt time.Time
 }
 
@@ -68,7 +73,7 @@ func NewJWKSProvider(jwksURL string, cacheTTL time.Duration, logger *slog.Logger
 		cacheTTL: cacheTTL,
 		logger:   logger,
 		client:   &http.Client{Timeout: 10 * time.Second},
-		keys:     make(map[string]*rsa.PublicKey),
+		keys:     make(map[string]any),
 	}
 
 	if err := p.refresh(); err != nil {
@@ -137,21 +142,30 @@ func (p *JWKSProvider) refresh() error {
 		return fmt.Errorf("parse JWKS JSON: %w", err)
 	}
 
-	keys := make(map[string]*rsa.PublicKey, len(doc.Keys))
+	keys := make(map[string]any, len(doc.Keys))
 	for _, k := range doc.Keys {
-		if k.Kty != "RSA" || (k.Use != "" && k.Use != "sig") {
+		if k.Use != "" && k.Use != "sig" {
 			continue
 		}
-		pub, err := parseRSAPublicKey(k)
-		if err != nil {
-			p.logger.Warn("skipping unparseable JWKS key", "kid", k.Kid, "error", err)
-			continue
+		if k.Kty == "RSA" {
+			pub, err := parseRSAPublicKey(k)
+			if err != nil {
+				p.logger.Warn("skipping unparseable RSA key", "kid", k.Kid, "error", err)
+				continue
+			}
+			keys[k.Kid] = pub
+		} else if k.Kty == "EC" {
+			pub, err := parseECPublicKey(k)
+			if err != nil {
+				p.logger.Warn("skipping unparseable EC key", "kid", k.Kid, "error", err)
+				continue
+			}
+			keys[k.Kid] = pub
 		}
-		keys[k.Kid] = pub
 	}
 
 	if len(keys) == 0 {
-		return fmt.Errorf("JWKS contains no usable RSA signing keys")
+		return fmt.Errorf("JWKS contains no usable signing keys")
 	}
 
 	p.mu.Lock()
@@ -178,6 +192,35 @@ func parseRSAPublicKey(k jwkKey) (*rsa.PublicKey, error) {
 	return &rsa.PublicKey{N: n, E: e}, nil
 }
 
+func parseECPublicKey(k jwkKey) (*ecdsa.PublicKey, error) {
+	xBytes, err := base64.RawURLEncoding.DecodeString(k.X)
+	if err != nil {
+		return nil, fmt.Errorf("decode x: %w", err)
+	}
+	yBytes, err := base64.RawURLEncoding.DecodeString(k.Y)
+	if err != nil {
+		return nil, fmt.Errorf("decode y: %w", err)
+	}
+
+	var curve elliptic.Curve
+	switch k.Crv {
+	case "P-256":
+		curve = elliptic.P256()
+	case "P-384":
+		curve = elliptic.P384()
+	case "P-521":
+		curve = elliptic.P521()
+	default:
+		return nil, fmt.Errorf("unsupported curve: %s", k.Crv)
+	}
+
+	return &ecdsa.PublicKey{
+		Curve: curve,
+		X:     new(big.Int).SetBytes(xBytes),
+		Y:     new(big.Int).SetBytes(yBytes),
+	}, nil
+}
+
 // ---------------------------------------------------------------------------
 // JWT Authentication Middleware
 // ---------------------------------------------------------------------------
@@ -189,7 +232,7 @@ func JWTAuth(provider *JWKSProvider, issuer string, logger *slog.Logger) gin.Han
 	parser := jwt.NewParser(
 		jwt.WithIssuer(issuer),
 		jwt.WithExpirationRequired(),
-		jwt.WithValidMethods([]string{"RS256"}),
+		jwt.WithValidMethods([]string{"RS256", "ES256"}),
 	)
 
 	return func(c *gin.Context) {

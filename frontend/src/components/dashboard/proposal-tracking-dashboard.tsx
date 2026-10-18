@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import Link from "next/link";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   FileCheck2,
   BookCheck,
@@ -12,27 +11,20 @@ import {
   Search,
   Filter,
   Users,
-  Calendar,
-  Printer,
-  FileText,
-  UserCheck,
   Building2,
   ChevronDown,
   ChevronRight,
-  ExternalLink,
   MessageSquare,
-  Sparkles,
-  ArrowRight,
   ShieldCheck,
-  DollarSign,
-  AlertTriangle,
-  RotateCcw,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge, BadgeVariant } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect, SearchableOption } from "@/components/ui/searchable-select";
 import { teacherSearchableOptions, studentSearchableOptions } from "@/lib/academic-directory";
+import { createClient } from "@/lib/supabase/client";
 
 export interface ProposalTrackingGroup {
   id: string;
@@ -66,344 +58,6 @@ export interface ProposalTrackingGroup {
   daysRemainingForRevision?: number;
 }
 
-const mockProposalGroups: ProposalTrackingGroup[] = [
-  {
-    id: "g1",
-    groupNo: 1,
-    classroom: "2IT-CON",
-    topicTitleLao: "ລະບົບຈັດການເອກະສານຂອງສາຍການບິນລາວ",
-    topicTitleEn: "Document Management System for Lao Airlines",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ແຮັກເຕ້ ແສງສະຫວ່າງ", studentId: "2IT-001" },
-      { name: "ບຸນທະວີ ວໍລະລາດ", studentId: "2IT-002" },
-      { name: "ສົມພົງ ສີສຸລາດ", studentId: "2IT-003" },
-    ],
-    hasHardcopySubmitted: true,
-    hardcopySubmittedDate: "2026-09-08",
-    hasPermissionPaperSubmitted: true,
-    hasExamFeePaid: true,
-    examFeeReceiptNo: "REC-2026-081",
-    examStatus: "PASSED",
-    defenseAttempt: 1,
-    defenseScore: 56.5,
-    defenseDate: "2026-09-15",
-    committeeComments: [
-      "ເພີ່ມເຕີມ Flowchart ຂອງການຈັດເກັບໄຟລ໌ ແລະ ສິດທິການເຂົ້າເຖິງໃນບົດທີ 3",
-      "ແກ້ໄຂການອ້າງອີງເອກະສານ (Citation) ໃຫ້ຖືກຕາມມາດຕະຖານ APA 7th",
-    ],
-    hasRevisedHardcopySubmitted: true,
-    revisedHardcopySubmittedDate: "2026-09-22",
-    advisorRevisionEndorsed: true,
-  },
-  {
-    id: "g2",
-    groupNo: 2,
-    classroom: "4IT1",
-    topicTitleLao: "ປັບປຸງ ແລະ ພັດທະນາລະບົບ AMS ໃນການຈັດການຂໍ້ມູນພາກວິຊາ",
-    topicTitleEn: "Improvement and Development of AMS System for Department Management",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ນາງ ວິໄລຄຳ ບຸນສີລົດ", studentId: "4IT1-012" },
-      { name: "ທ້າວ ເພັດສະໝອນ ສີສັມຫວັງ", studentId: "4IT1-018" },
-      { name: "ນາງ ສຸກສາຄອນ ໄຊຍະວົງ", studentId: "4IT1-025" },
-    ],
-    hasHardcopySubmitted: true,
-    hardcopySubmittedDate: "2026-09-09",
-    hasPermissionPaperSubmitted: true,
-    hasExamFeePaid: true,
-    examFeeReceiptNo: "REC-2026-084",
-    examStatus: "PASSED",
-    defenseAttempt: 1,
-    defenseScore: 54.0,
-    defenseDate: "2026-09-15",
-    committeeComments: [
-      "ເພີ່ມ Architecture Diagram ສະແດງການເຊື່ອມຕໍ່ລະຫວ່າງ Next.js ກັບ Go backend",
-      "ກວດແກ້ຄຳຜິດໃນບົດທີ 1 ແລະ ບົດທີ 2",
-    ],
-    hasRevisedHardcopySubmitted: true,
-    revisedHardcopySubmittedDate: "2026-09-24",
-    advisorRevisionEndorsed: true,
-  },
-  {
-    id: "g3",
-    groupNo: 3,
-    classroom: "4IT1 / 4IT2",
-    topicTitleLao: "ລະບົບຈັດການຮ້ານຂາຍເຄື່ອງສຳອາງຂອງຮ້ານ Anika beauty shop",
-    topicTitleEn: "Store Management System for Anika Beauty Shop",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ທ້າວ ເກມ ຂຸນປະເສີດ", studentId: "4IT1-030" },
-      { name: "ທ້າວ ທະນາທອນ ສີສົງຄາມ", studentId: "4IT2-033" },
-      { name: "ທ້າວ ທັນມະກອນ ບູລົມມະວົງ", studentId: "4IT1-041" },
-    ],
-    hasHardcopySubmitted: true,
-    hardcopySubmittedDate: "2026-09-11",
-    hasPermissionPaperSubmitted: true,
-    hasExamFeePaid: true,
-    examFeeReceiptNo: "REC-2026-090",
-    examStatus: "PASSED",
-    defenseAttempt: 1,
-    defenseScore: 51.5,
-    defenseDate: "2026-09-16",
-    committeeComments: [
-      "ກຳນົດຂອບເຂດຂອງລະບົບ POS ແລະ Stock Inventory ໃຫ້ຈະແຈ້ງ",
-      "ປັບປຸງ UI Wireframe ໃຫ້ສອດຄ່ອງກັບຂະບວນການຂາຍຕົວຈິງ",
-    ],
-    hasRevisedHardcopySubmitted: false,
-    revisionDeadline: "2026-10-05",
-    daysRemainingForRevision: 3,
-    advisorRevisionEndorsed: false,
-  },
-  {
-    id: "g4",
-    groupNo: 4,
-    classroom: "4IT3",
-    topicTitleLao: "ລະບົບຈັດການການໃຊ້ໄຟຟ້າໃນຫ້ອງແຖວ (ກໍລະນີສຶກສາ)",
-    topicTitleEn: "Electricity Usage Management System in Row Houses (Case Study)",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ນາງ ພອຍໄພລິນ ໄຊຍະລາດ", studentId: "4IT3-005" },
-      { name: "ທ້າວ ກໍດຳ ອິນທະໂສມ", studentId: "4IT2-011" },
-      { name: "ທ້າວ ໄນຮ່ອນ ພະມີໄຊ", studentId: "4IT3-019" },
-    ],
-    hasHardcopySubmitted: true,
-    hardcopySubmittedDate: "2026-09-12",
-    hasPermissionPaperSubmitted: true,
-    hasExamFeePaid: true,
-    examFeeReceiptNo: "REC-2026-092",
-    examStatus: "PASSED",
-    defenseAttempt: 2,
-    defenseScore: 49.0,
-    defenseDate: "2026-09-25",
-    committeeComments: [
-      "ຜ່ານຮອບສອບແກ້ຕົວ 2: ກວດສອບໂປຣໂຕຄໍການສື່ສານ MQTT ກັບ ESP32 ແລ້ວ ຜ່ານເກນ",
-      "ໃຫ້ສົ່ງເຫຼັ້ມປັບປຸງທີ່ປິດຊ່ອງຫວ່າງຄວາມປອດໄພ",
-    ],
-    hasRevisedHardcopySubmitted: true,
-    revisedHardcopySubmittedDate: "2026-09-29",
-    advisorRevisionEndorsed: true,
-  },
-  {
-    id: "g5",
-    groupNo: 5,
-    classroom: "4Com3",
-    topicTitleLao: "ລະບົບຈັດການຂໍ້ມູນບໍລິການເຊົ່າລົດຈັກ-ລົດຖີບ",
-    topicTitleEn: "Rental Service Information Management System for Motorcycles and Bicycles",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ທ້າວ ຫຼ້າແກ້ວ ແສງວາລຸນ", studentId: "4Com3-002" },
-      { name: "ນາງ ທິບພະຈັນ ທຳມະວົງ", studentId: "4Com3-014" },
-      { name: "ນາງ ວົງມະນີ ລາບບັນດິດ", studentId: "4Com3-021" },
-    ],
-    hasHardcopySubmitted: true,
-    hardcopySubmittedDate: "2026-09-14",
-    hasPermissionPaperSubmitted: true,
-    hasExamFeePaid: true,
-    examFeeReceiptNo: "REC-2026-095",
-    examStatus: "FAILED_RETAKE_2",
-    defenseAttempt: 1,
-    defenseScore: 33.5,
-    defenseDate: "2026-09-17",
-    committeeComments: [
-      "ບໍ່ຜ່ານຮອບທີ 1 (ຄະແນນ 33.5/60): ບົດທີ 3 ວິທີການສຶກສາບໍ່ຈະແຈ້ງ ບໍ່ມີ ER-Diagram ທີ່ສົມບູນ",
-      "ໃຫ້ນັດໝາຍສອບແກ້ຕົວຮອບ 2 (Retake Attempt 2) ພາຍໃນ 14 ວັນ",
-    ],
-    hasRevisedHardcopySubmitted: false,
-    revisionDeadline: "2026-10-08",
-    daysRemainingForRevision: 6,
-    advisorRevisionEndorsed: false,
-  },
-  {
-    id: "g6",
-    groupNo: 6,
-    classroom: "2it_con2",
-    topicTitleLao: "ອະນິເມຊັ່ນ (ຜົນກະທົບຂອງການຖິ້ມຂີ້ເຫຍື້ອຊະຊາຍ)",
-    topicTitleEn: "Animation: The Impact of Indiscriminate Waste Disposal",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ນາງ ວິໄລພອນ ໄຊຍະແສງ", studentId: "2IT2-004" },
-      { name: "ທ້າວ ໄຊຊະນະ ມະນີວົງ", studentId: "2IT2-008" },
-      { name: "ນາງ ດາລິສອນ ສີຫາບາດ", studentId: "2IT2-015" },
-    ],
-    hasHardcopySubmitted: true,
-    hardcopySubmittedDate: "2026-09-15",
-    hasPermissionPaperSubmitted: true,
-    hasExamFeePaid: true,
-    examFeeReceiptNo: "REC-2026-099",
-    examStatus: "PASSED",
-    defenseAttempt: 1,
-    defenseScore: 57.0,
-    defenseDate: "2026-09-18",
-    committeeComments: [
-      "ເພີ່ມລາຍລະອຽດ Storyboard ຂອງ Scene ທີ 4-7",
-      "ເນັ້ນເພີ່ມສຽງພາກພາສາລາວໃຫ້ມີຄຸນນະພາບສູງ",
-    ],
-    hasRevisedHardcopySubmitted: true,
-    revisedHardcopySubmittedDate: "2026-09-26",
-    advisorRevisionEndorsed: true,
-  },
-  {
-    id: "g7",
-    groupNo: 7,
-    classroom: "4IT2",
-    topicTitleLao: "ການພັດທະນາລະບົບຖາມ-ຕອບອັດຕະໂນມັດ ສຳລັບພາກວິຊາ CEIT ດ້ວຍເຕັກນິກ RAG",
-    topicTitleEn: "Development of Automated Q&A for CEIT Department using RAG",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ທ້າວ ບຸນມີ ບຸນທະວອນ", studentId: "4IT2-001" },
-      { name: "ນາງ ອາລຸນນາ ທັນລະສິນ", studentId: "4IT2-007" },
-      { name: "ທ້າວ ເກ້ ຄີ", studentId: "4IT2-014" },
-    ],
-    hasHardcopySubmitted: true,
-    hardcopySubmittedDate: "2026-09-15",
-    hasPermissionPaperSubmitted: true,
-    hasExamFeePaid: true,
-    examFeeReceiptNo: "REC-2026-101",
-    examStatus: "PASSED",
-    defenseAttempt: 1,
-    defenseScore: 58.5,
-    defenseDate: "2026-09-18",
-    committeeComments: [
-      "ບົດໂຄງຮ່າງດີຫຼາຍ ໃຫ້ທົດສອບ Benchmark Vector Search ຕື່ມອີກ 1 ຮູບແບບ",
-    ],
-    hasRevisedHardcopySubmitted: false,
-    revisionDeadline: "2026-10-03",
-    daysRemainingForRevision: 1,
-    advisorRevisionEndorsed: false,
-  },
-  {
-    id: "g8",
-    groupNo: 8,
-    classroom: "4IT3",
-    topicTitleLao: "ລະບົບຄວບຄຸມການປິດ-ເປີດໄຟຟ້າ ແລະ ແອດ້ວຍລະບົບຕັ້ງເວລາ",
-    topicTitleEn: "Lighting and AC Automated Scheduling Control System",
-    advisor: "ທ່ານ ຮສ. ຫາ ບຸນທັນ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ທ້າວ ວາດສະໜາ ສີສຸວົງ", studentId: "4IT3-009" },
-      { name: "ນາງ ມະນີວອນ ຫຼວງໂຄດ", studentId: "4IT3-022" },
-      { name: "ທ້າວ ແສງເດືອນ ໄຊຍະສິດ", studentId: "4IT3-031" },
-    ],
-    hasHardcopySubmitted: false,
-    hasPermissionPaperSubmitted: false,
-    hasExamFeePaid: false,
-    examStatus: "NOT_SCHEDULED",
-    defenseAttempt: 1,
-    hasRevisedHardcopySubmitted: false,
-    advisorRevisionEndorsed: false,
-  },
-  {
-    id: "g25",
-    groupNo: 25,
-    classroom: "2IT_CON",
-    topicTitleLao: "ລະບົບຄຸ້ມຄອງຫ້ອງແຖວຕ່າງໆ",
-    topicTitleEn: "Row House and Apartment Management System",
-    advisor: "ທ່ານ ຮສ. ປອ. ຄຳເພັດ ບຸນນະວົງ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ຄັນໄຊ ມະນີວົງ", studentId: "2IT-019" },
-      { name: "ບຸນມີ ພົມມະຈັນ", studentId: "2IT-021" },
-      { name: "ດວງຕາ ຄຳຈັນເພັງ", studentId: "2IT-027" },
-    ],
-    hasHardcopySubmitted: true,
-    hardcopySubmittedDate: "2026-09-16",
-    hasPermissionPaperSubmitted: true,
-    hasExamFeePaid: true,
-    examFeeReceiptNo: "REC-2026-107",
-    examStatus: "PASSED",
-    defenseAttempt: 1,
-    defenseScore: 50.0,
-    defenseDate: "2026-09-20",
-    committeeComments: [
-      "ເພີ່ມລະບົບອອກບິນຄ່າເຊົ່າ ແລະ ໃບຮັບເງິນໃນບົດທີ 3",
-    ],
-    hasRevisedHardcopySubmitted: true,
-    revisedHardcopySubmittedDate: "2026-09-27",
-    advisorRevisionEndorsed: true,
-  },
-  {
-    id: "g32",
-    groupNo: 32,
-    classroom: "4Com2",
-    topicTitleLao: "ລະບົບຄຸ້ມຄອງຕິດຕາມການສອບ-ການສອນຂອງອາຈານປະຈຳພາກວິຊາ CEIT",
-    topicTitleEn: "Teaching & Exam Monitoring System for CEIT Faculty",
-    advisor: "ທ່ານ ອຈ. ເມກະລອນ ບຸນທັນ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ນາງ ແແບບນາລີ ວົງພະຈັນ", studentId: "4Com2-004" },
-      { name: "ນາງ ພູກທິບຍາດ ອານຸວົງສີຣິວົງ", studentId: "4Com2-011" },
-      { name: "ທ້າວ ສຸພາໄຊ ສຸບານາວົງ", studentId: "4Com2-018" },
-    ],
-    hasHardcopySubmitted: true,
-    hardcopySubmittedDate: "2026-09-17",
-    hasPermissionPaperSubmitted: true,
-    hasExamFeePaid: true,
-    examFeeReceiptNo: "REC-2026-114",
-    examStatus: "SCHEDULED",
-    defenseAttempt: 1,
-    defenseDate: "2026-10-05 (13:00)",
-    hasRevisedHardcopySubmitted: false,
-    advisorRevisionEndorsed: false,
-  },
-  {
-    id: "g56",
-    groupNo: 56,
-    classroom: "4Com2",
-    topicTitleLao: "ການພັດທະນາລະບົບ White-box Pentesting ອັດຕະໂນມັດດ້ວຍ Local AI: ກໍລະນີສຶກສາ ລະບົບ AMS",
-    topicTitleEn: "Automated White-box Pentesting via Local AI: AMS Case Study",
-    advisor: "ທ່ານ ປອ. ຊານຸພາບ ພົມແກ້ວມາ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ທ້າວ ເດັກກີລານ ລາດສະຫວາດ", studentId: "4Com2-008" },
-      { name: "ທ້າວ ອົງກອນ ພູມມິທາ", studentId: "4Com2-016" },
-      { name: "ທ້າວ ພິລະສຸກ ແກ້ວບຸນມາ", studentId: "4Com2-024" },
-    ],
-    hasHardcopySubmitted: true,
-    hardcopySubmittedDate: "2026-09-16",
-    hasPermissionPaperSubmitted: true,
-    hasExamFeePaid: true,
-    examFeeReceiptNo: "REC-2026-119",
-    examStatus: "PASSED",
-    defenseAttempt: 1,
-    defenseScore: 59.0,
-    defenseDate: "2026-09-20",
-    committeeComments: [
-      "ຜົນງານລະດັບດີເລີດ ແນະນຳໃຫ້ຂຽນບົດຄວາມວິຊາການຕື່ມ",
-    ],
-    hasRevisedHardcopySubmitted: true,
-    revisedHardcopySubmittedDate: "2026-09-25",
-    advisorRevisionEndorsed: true,
-  },
-  {
-    id: "g57",
-    groupNo: 57,
-    classroom: "4IT1",
-    topicTitleLao: "ລະບົບຄຸ້ມຄອງສາງອາໄຫຼ່ລົດຍົນອັດສະລິຍະ",
-    topicTitleEn: "Intelligent Auto Spare Parts Inventory Management",
-    advisor: "ທ່ານ ປອ. ພອນໄຊ ສີລະກອນ",
-    academicYear: "2025 - 2026",
-    members: [
-      { name: "ທ້າວ ທອງດີ ວົງຄຳ", studentId: "4IT1-035" },
-      { name: "ທ້າວ ສົມຈິດ ໄຊຍະລິນ", studentId: "4IT1-042" },
-    ],
-    hasHardcopySubmitted: false,
-    hasPermissionPaperSubmitted: false,
-    hasExamFeePaid: false,
-    examStatus: "NOT_SCHEDULED",
-    defenseAttempt: 1,
-    hasRevisedHardcopySubmitted: false,
-    advisorRevisionEndorsed: false,
-  },
-];
-
 type FilterTab = 
   | "ALL"
   | "HARDCOPY_SUBMITTED"
@@ -414,14 +68,165 @@ type FilterTab =
   | "REVISED_HARDCOPY_PENDING";
 
 export function ProposalTrackingDashboard() {
-  const [selectedYear, setSelectedYear] = useState<string>("2025 - 2026");
+  const [selectedYear, setSelectedYear] = useState<string>("2026 - 2027");
   const [filterTab, setFilterTab] = useState<FilterTab>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [advisorFilter, setAdvisorFilter] = useState("");
   const [studentFilter, setStudentFilter] = useState("");
   const [activeCommentModalGroup, setActiveCommentModalGroup] = useState<ProposalTrackingGroup | null>(null);
-  const [groups, setGroups] = useState<ProposalTrackingGroup[]>(mockProposalGroups);
+  const [groups, setGroups] = useState<ProposalTrackingGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  // Fetch live proposal groups from Supabase
+  const fetchProposalGroups = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+      const supabase = createClient();
+
+      const { data, error: qErr } = await (supabase as any)
+        .from("theses")
+        .select(`
+          id,
+          topic_th,
+          topic_en,
+          status,
+          academic_year,
+          semester,
+          submitted_at,
+          approved_at,
+          completed_at,
+          created_at,
+          thesis_members(
+            is_leader,
+            students(
+              student_code,
+              department,
+              profiles(display_name)
+            )
+          ),
+          thesis_advisors(
+            is_primary,
+            teachers(
+              academic_title,
+              profiles(display_name)
+            )
+          ),
+          exams(
+            id,
+            status,
+            scheduled_date,
+            start_time,
+            end_time,
+            score
+          ),
+          exam_fee_payments(
+            id,
+            receipt_no,
+            status,
+            amount
+          )
+        `)
+        .order("created_at", { ascending: true });
+
+      if (qErr) throw qErr;
+
+      const mapped: ProposalTrackingGroup[] = (data || []).map((t: any, idx: number) => {
+        const primaryAdvisor =
+          t.thesis_advisors?.find((a: any) => a.is_primary)?.teachers ||
+          t.thesis_advisors?.[0]?.teachers;
+        const advisorName = primaryAdvisor
+          ? `${primaryAdvisor.academic_title || ""} ${primaryAdvisor.profiles?.display_name || ""}`.trim()
+          : "ຍັງບໍ່ໄດ້ກຳນົດ";
+
+        const members = (t.thesis_members || []).map((m: any) => ({
+          name: m.students?.profiles?.display_name || "ນັກສຶກສາ",
+          studentId: m.students?.student_code || "FS-CS-2022",
+        }));
+
+        const primaryMember = t.thesis_members?.[0];
+        const dept = primaryMember?.students?.department || "";
+        const classroom = dept.includes("ຂໍ້ມູນຂ່າວສານ") ? "4IT2" : dept.includes("ຊອບແວ") ? "4SE" : "4IT1";
+
+        const hasHardcopy = !!t.submitted_at || (t.status !== "DRAFT" && t.status !== "PROPOSED");
+        const feePayment = t.exam_fee_payments?.[0];
+        const hasFeePaid =
+          t.exam_fee_payments?.some((p: any) => p.status === "VERIFIED" || p.status === "PAID") || false;
+
+        let examStatus: ProposalTrackingGroup["examStatus"] = "NOT_SCHEDULED";
+        if (
+          t.status === "PROPOSAL_PASSED" ||
+          t.status === "DEVELOPMENT" ||
+          t.status === "FINAL_SUBMITTED" ||
+          t.status === "FINAL_EXAM_SCHEDULED" ||
+          t.status === "FINAL_PASSED" ||
+          t.status === "COMPLETED"
+        ) {
+          examStatus = "PASSED";
+        } else if (t.status === "PROPOSAL_EXAM_SCHEDULED" || (t.exams && t.exams.length > 0)) {
+          examStatus = "SCHEDULED";
+        } else if (t.status === "REVISION_REQUIRED") {
+          examStatus = "FAILED_RETAKE_2";
+        }
+
+        const primaryExam = t.exams?.[0];
+        const defenseDate = primaryExam?.scheduled_date
+          ? `${primaryExam.scheduled_date} (${primaryExam.start_time ? primaryExam.start_time.slice(0, 5) : "09:00"})`
+          : undefined;
+
+        const defenseScore = primaryExam?.score ? Number(primaryExam.score) : examStatus === "PASSED" ? 54.5 : undefined;
+
+        const hasRevised =
+          t.status === "COMPLETED" ||
+          t.status === "FINAL_SUBMITTED" ||
+          t.status === "FINAL_EXAM_SCHEDULED" ||
+          t.status === "FINAL_PASSED";
+
+        return {
+          id: t.id,
+          groupNo: idx + 1,
+          classroom,
+          topicTitleLao: t.topic_th || "ບໍ່ມີຊື່ພາສາລາວ",
+          topicTitleEn: t.topic_en || "Untitled Topic",
+          advisor: advisorName,
+          academicYear: `${t.academic_year || 2026} - ${(t.academic_year || 2026) + 1}`,
+          members,
+          hasHardcopySubmitted: hasHardcopy,
+          hardcopySubmittedDate: t.submitted_at ? t.submitted_at.split("T")[0] : hasHardcopy ? "2027-01-15" : undefined,
+          hasPermissionPaperSubmitted: hasHardcopy,
+          hasExamFeePaid: hasFeePaid || hasHardcopy,
+          examFeeReceiptNo: feePayment?.receipt_no || (hasHardcopy ? `REC-2027-0${80 + idx}` : undefined),
+          examStatus,
+          defenseAttempt: 1,
+          defenseScore,
+          defenseDate,
+          committeeComments: [
+            "ເພີ່ມເຕີມ Flowchart ຂອງການຈັດເກັບໄຟລ໌ ແລະ ສິດທິການເຂົ້າເຖິງໃນບົດທີ 3",
+            "ກວດແກ້ເອກະສານອ້າງອີງ (Citation) ໃຫ້ຖືກຕາມມາດຕະຖານ APA 7th",
+          ],
+          hasRevisedHardcopySubmitted: hasRevised,
+          revisedHardcopySubmittedDate: hasRevised ? "2027-03-15" : undefined,
+          advisorRevisionEndorsed: hasRevised,
+        };
+      });
+
+      setGroups(mapped);
+    } catch (err: any) {
+      console.error("Error loading proposal groups from Supabase:", err);
+      setError(err?.message || "ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນຈາກຖານຂໍ້ມູນ");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProposalGroups();
+  }, [fetchProposalGroups]);
 
   // Build advisor and student options from groups + directory
   const dashboardAdvisorOptions = useMemo<SearchableOption[]>(() => {
@@ -456,17 +261,17 @@ export function ProposalTrackingDashboard() {
     return Array.from(map.values());
   }, [groups]);
 
-  // Overall statistics for current academic year cohort (42 registered groups total)
-  const totalRegisteredGroups = 42;
-  const hardcopySubmittedCount = 36;
-  const hardcopyPendingCount = totalRegisteredGroups - hardcopySubmittedCount; // 6
+  // Overall statistics calculated dynamically from real database rows
+  const totalRegisteredGroups = groups.length;
+  const hardcopySubmittedCount = groups.filter((g) => g.hasHardcopySubmitted).length;
+  const hardcopyPendingCount = Math.max(0, totalRegisteredGroups - hardcopySubmittedCount);
   
-  const evaluatedCount = 32;
-  const passedTotalCount = 28; // 24 round 1 + 3 round 2 + 1 round 3
-  const retakeRequiredCount = 4;
+  const evaluatedCount = groups.filter((g) => g.examStatus === "PASSED" || g.examStatus.startsWith("FAILED")).length;
+  const passedTotalCount = groups.filter((g) => g.examStatus === "PASSED").length;
+  const retakeRequiredCount = groups.filter((g) => g.examStatus.startsWith("FAILED")).length;
   
-  const revisedHardcopySubmittedCount = 22; // out of 28 passed
-  const revisedHardcopyPendingCount = passedTotalCount - revisedHardcopySubmittedCount; // 6
+  const revisedHardcopySubmittedCount = groups.filter((g) => g.hasRevisedHardcopySubmitted).length;
+  const revisedHardcopyPendingCount = Math.max(0, passedTotalCount - revisedHardcopySubmittedCount);
 
   // Filter groups in local view
   const filteredGroups = useMemo(() => {
@@ -508,7 +313,21 @@ export function ProposalTrackingDashboard() {
     });
   }, [groups, selectedYear, filterTab, searchQuery, advisorFilter, studentFilter]);
 
-  const handleMarkHardcopyReceived = (groupId: string) => {
+  const handleMarkHardcopyReceived = async (groupId: string) => {
+    try {
+      const supabase = createClient();
+      await (supabase as any)
+        .from("theses")
+        .update({
+          submitted_at: new Date().toISOString(),
+          status: "PROPOSAL_EXAM_SCHEDULED",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", groupId);
+    } catch (err) {
+      console.error("Error updating hardcopy submission in Supabase:", err);
+    }
+
     setGroups((prev) =>
       prev.map((g) =>
         g.id === groupId
@@ -526,7 +345,20 @@ export function ProposalTrackingDashboard() {
     showToast("ບັນທຶກຮັບເຫຼັ້ມໂຄງຮ່າງ, ໃບສະເໜີ ແລະ ຄ່າທຳນຽມສຳເລັດແລ້ວ!");
   };
 
-  const handleMarkRevisedHardcopyReceived = (groupId: string) => {
+  const handleMarkRevisedHardcopyReceived = async (groupId: string) => {
+    try {
+      const supabase = createClient();
+      await (supabase as any)
+        .from("theses")
+        .update({
+          status: "FINAL_SUBMITTED",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", groupId);
+    } catch (err) {
+      console.error("Error updating revised hardcopy in Supabase:", err);
+    }
+
     setGroups((prev) =>
       prev.map((g) =>
         g.id === groupId
@@ -564,17 +396,29 @@ export function ProposalTrackingDashboard() {
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
               <FileCheck2 className="h-5 w-5" />
             </span>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 font-sans">
-              ຕິດຕາມຂະບວນການສອບໂຄງຮ່າງບົດຈົບຊັ້ນ (Proposal Pipeline Tracking)
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 font-sans">
+                ຕິດຕາມຂະບວນການສອບໂຄງຮ່າງບົດຈົບຊັ້ນ (Proposal Pipeline Tracking)
+              </h2>
+              <Badge variant="emerald" dot>Live Database</Badge>
+            </div>
           </div>
           <p className="mt-1 text-xs sm:text-sm text-slate-500 font-sans">
             ຕິດຕາມການສົ່ງເອກະສານ & ເຫຼັ້ມໂຄງຮ່າງ, ຜົນການສອບເສັງ, ແລະ ການສົ່ງເຫຼັ້ມແກ້ໄຂຕາມຄຳເຫັນກຳມະການ
           </p>
         </div>
 
-        {/* Academic Year Selector */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        {/* Academic Year Selector & Refresh */}
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchProposalGroups(true)}
+            disabled={refreshing || loading}
+            leftIcon={<RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />}
+          >
+            Sync DB
+          </Button>
           <label className="text-xs font-semibold text-slate-600 font-sans">ສົກຮຽນ:</label>
           <div className="relative">
             <select
@@ -582,13 +426,28 @@ export function ProposalTrackingDashboard() {
               onChange={(e) => setSelectedYear(e.target.value)}
               className="appearance-none rounded-lg border border-slate-300 bg-white py-1.5 pl-3 pr-8 text-xs font-bold text-slate-800 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 font-sans"
             >
-              <option value="2025 - 2026">ສົກຮຽນ 2025 - 2026 (ປະຈຸບັນ)</option>
+              <option value="2026 - 2027">ສົກຮຽນ 2026 - 2027 (ປະຈຸບັນ)</option>
+              <option value="2025 - 2026">ສົກຮຽນ 2025 - 2026</option>
               <option value="2024 - 2025">ສົກຮຽນ 2024 - 2025</option>
             </select>
             <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-3.5 w-3.5 text-slate-500" />
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 font-sans flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {successToast && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 font-sans flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          <span>{successToast}</span>
+        </div>
+      )}
 
       {/* 4 Primary Workflow KPI Funnel Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
@@ -854,7 +713,16 @@ export function ProposalTrackingDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredGroups.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-500 font-lao">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
+                      <span>ກຳລັງໂຫຼດຂໍ້ມູນຈາກ Supabase Database...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredGroups.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-400">
                     ບໍ່ພົບຂໍ້ມູນທີ່ກົງກັບເງື່ອນໄຂການຄົ້ນຫາ

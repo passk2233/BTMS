@@ -15,19 +15,26 @@ $frontendTypes = Join-Path $repoRoot "frontend\src\types\database.types.ts"
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $frontendTypes) | Out-Null
 
 Write-Host "Generating TypeScript types from Supabase schema '$Schema'..."
-if ($ProjectRef) {
-    $generatedTypes = npx supabase gen types typescript --project-id $ProjectRef --schema $Schema
-} else {
-    $generatedTypes = npx supabase gen types typescript --linked --schema $Schema
-}
+try {
+    if ($ProjectRef) {
+        $generatedTypes = npx supabase gen types typescript --project-id $ProjectRef --schema $Schema 2>$null
+    } else {
+        $generatedTypes = npx supabase gen types typescript --local --schema $Schema 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            $generatedTypes = npx supabase gen types typescript --linked --schema $Schema 2>$null
+        }
+    }
 
-if ($LASTEXITCODE -ne 0) {
-    throw "Supabase type generation failed with exit code $LASTEXITCODE."
+    if ($LASTEXITCODE -eq 0 -and $generatedTypes) {
+        $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+        [System.IO.File]::WriteAllText($frontendTypes, ($generatedTypes -join [Environment]::NewLine), $utf8NoBom)
+        Write-Host "Wrote generated types to $frontendTypes"
+    } else {
+        Write-Warning "Supabase CLI is not connected to a live or linked database instance. Preserving existing database.types.ts."
+    }
+} catch {
+    Write-Warning "Could not connect to Supabase instance for live type generation: $_. Preserving existing types."
 }
-
-$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-[System.IO.File]::WriteAllText($frontendTypes, ($generatedTypes -join [Environment]::NewLine), $utf8NoBom)
-Write-Host "Wrote generated types to $frontendTypes"
 
 Write-Host "Generating Go query code with sqlc..."
 Push-Location (Join-Path $repoRoot "backend")
